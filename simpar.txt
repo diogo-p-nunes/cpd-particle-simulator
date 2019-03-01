@@ -1,0 +1,25 @@
+// serial version
+
+int main() {
+    init_particles();
+    for n number of time steps:
+        determine center of mass of each cell();
+        force = compute gravitational force on each particle();
+        update positions and velocities(force);
+}
+
+
+determine center of mass of each cell() {
+    know what particles are in each cell
+    for each cell:
+        determine the center of mass()
+}
+
+
+compute gravitational force on each particle() {
+    for each particle:
+        for each cell:
+            determine gravitational force()
+    
+    return force on each particle
+}

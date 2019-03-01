@@ -2,6 +2,14 @@
 #define G 6.67408e-11
 #define EPSLON 0.01
 
+
+// TODO: define particle structure or class
+typedef struct particle_t {
+    double x, y, vx, vy, m;
+} particle_t;
+
+
+
 void init_particles(long seed, long ncside, long long n_part, particle_t *par)
 {
     long long i;
