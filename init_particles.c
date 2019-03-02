@@ -3,7 +3,7 @@
 #define EPSLON 0.01
 
 
-// TODO: define particle structure or class
+// TODO: define particle structure or class outside this file
 typedef struct particle_t {
     double x, y, vx, vy, m;
 } particle_t;
