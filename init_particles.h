@@ -21,7 +21,7 @@
 
 typedef struct particle_t {
     double x, y, vx, vy, m;
-    double f;
+    double fx, fy;
 } particle_t;
 
 

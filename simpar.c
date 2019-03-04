@@ -25,7 +25,7 @@ void print_particles(long long n_part, particle_t *par) {
     printf("[Particles]\n");
     int i;
     for(i = 0; i < n_part; i++) {
-        printf("\t(%f, %f) - %f\n", par[i].x, par[i].y, par[i].m);
+        printf("\tp=(%f, %f) | f=(%f, %f)\n", par[i].x, par[i].y, par[i].fx, par[i].fy);
     }
 }
 
@@ -68,10 +68,10 @@ void calc_all_cells_cm(long ncside, cell_t **cells, long long n_part, particle_t
     // after all total masses and positions have been determined
     for(i = 0; i < ncside; i++) {
         for(j = 0; j < ncside; j++) {
-	    if(cells[i][j].npar != 0) {
-	        cells[i][j].x = cells[i][j].x / cells[i][j].m;
-		cells[i][j].y = cells[i][j].y / cells[i][j].m;
-	    }
+			if(cells[i][j].npar != 0) {
+				cells[i][j].x = cells[i][j].x / cells[i][j].m;
+				cells[i][j].y = cells[i][j].y / cells[i][j].m;
+			}
         }
     }
 }
@@ -83,7 +83,6 @@ double euclidean_distance(double x1, double x2, double y1, double y2){
      * */
     double dx = (x1-x2);
     double dy = (y1-y2);
-
     return sqrt(dx*dx + dy*dy);
 }
 
@@ -93,12 +92,30 @@ void update_force(int i, int cellx, int celly, cell_t **cells, particle_t *par){
      * applied by the center of mass from cell (cellx, celly).
      *
      * */
-    int dist = 0;
-
+    double dist;
+	double fdirx, fdiry, magnitude, norm;
+	
     if(cells[cellx][celly].npar != 0){
-        dist = euclidean_distance(par[i].x, cells[cellx][celly].x, par[i].y, cells[cellx][celly].y);
-	if(dist >= EPSLON)
-	    par[i].f += (G * par[i].m * cells[cellx][celly].m) / (dist * dist);
+        dist = euclidean_distance(cells[cellx][celly].x, par[i].x, cells[cellx][celly].y, par[i].y);
+		if(dist >= EPSLON) {
+			magnitude = (G * par[i].m * cells[cellx][celly].m) / (dist * dist);
+		}
+		else {
+			magnitude = 0;
+		}
+
+		// determine force direction and norm
+		fdirx = cells[cellx][celly].x - par[i].x; 
+		fdiry = cells[cellx][celly].y - par[i].y;
+		norm = sqrt(fdirx*fdirx + fdiry*fdiry);
+
+		// normalize direction vector
+		fdirx = fdirx / norm; 
+		fdiry = fdiry / norm;
+
+		// update particle's force vector
+		par[i].fx += (fdirx * magnitude); 
+		par[i].fy += (fdiry * magnitude);
     }
 }
 
@@ -111,73 +128,64 @@ void calc_all_particle_force(long ncside, cell_t **cells, long long n_part, part
      *  GF = G * ma * mb / dab^2
      * */
     int i, cellx, celly, cx, cy;
-    double interval = 1.0 / ncside, dist;
-
+    double interval = 1.0 / ncside;
+	
     for(i = 0; i < n_part; i++) {
         cellx = ((int) floor(par[i].x / interval)) % ncside;
-	celly = ((int) floor(par[i].y / interval)) % ncside;
+		celly = ((int) floor(par[i].y / interval)) % ncside;
 
-	// actual cell of the particle
-	dist = euclidean_distance(par[i].x, cells[cellx][celly].x, par[i].y, cells[cellx][celly].y);
+		// TODO: This whole part can be refactored into a few loops
 
-	if(dist >= EPSLON)
-	    par[i].f += (G * par[i].m * cells[cellx][celly].m) / (dist * dist);
+		// actual cell of the particle
+		update_force(i, cellx, celly, cells, par);
 
-	// right cell
-	cy = celly+1;
-        if(cy == ncside)
-	    cy = 0;
+		// right cell
+		cy = celly+1;
+		if(cy == ncside)
+		cy = 0;
+		update_force(i, cellx, cy, cells, par);
 
-	update_force(i, cellx, cy, cells, par);
+		// left cell
+		cy = celly-1;
+		if(cy == -1)
+			cy = ncside-1;
+		update_force(i, cellx, cy, cells, par);
 
-	// left cell
-	cy = celly-1;
-	if(cy == -1)
-	    cy = ncside-1;
+		// up cell
+		cx = cellx-1;
+		if(cx == -1)
+			cx = ncside-1;
+		update_force(i, cx, celly, cells, par);
 
-	update_force(i, cellx, cy, cells, par);
+		// diagonal up-left
+		cy = celly-1;
+		if(cy == -1)
+			cy = ncside-1;
+		update_force(i, cx, cy, cells, par);
 
-	// up cell
-	cx = cellx-1;
-	if(cx == -1)
-	    cx = ncside-1;
+		// diagonal up-right
+		cy = celly+1;
+		if(cy == ncside)
+			cy = 0;
+		update_force(i, cx, cy, cells, par);
 
-	update_force(i, cx, celly, cells, par);
+		// down cell
+		cx = cellx+1;
+		if(cx == ncside)
+			cx = 0;
+		update_force(i, cx, celly, cells, par);
 
-	// diagonal up-left
-	cy = celly-1;
-	if(cy == -1)
-	    cy = ncside-1;
+		// diagonal down-right
+		cy = celly+1;
+		if(cy == ncside)
+			cy = 0;
+		update_force(i, cx, cy, cells, par);
 
-	update_force(i, cx, cy, cells, par);
-
-	// diagonal up-right
-	cy = celly+1;
-	if(cy == ncside)
-	    cy = 0;
-
-	update_force(i, cx, cy, cells, par);
-
-	// down cell
-	cx = cellx+1;
-	if(cx == ncside)
-	    cx = 0;
-
-	update_force(i, cx, celly, cells, par);
-
-	// diagonal down-right
-	cy = celly+1;
-	if(cy == ncside)
-	    cy = 0;
-
-	update_force(i, cx, cy, cells, par);
-
-	// diagonal down_left
-	cy = celly-1;
-	if(cy == -1)
-	    cy = ncside-1;
-
-	update_force(i, cx, cy, cells, par);
+		// diagonal down_left
+		cy = celly-1;
+		if(cy == -1)
+			cy = ncside-1;
+		update_force(i, cx, cy, cells, par);
     }
 }
 
@@ -223,9 +231,10 @@ int main(int argc, char *argv[]) {
     cell_t **cells = malloc(ncside * sizeof(cell_t*));
     init_cells_matrix(ncside, cells);
 
+	
     // determine center of mass of all cells
     calc_all_cells_cm(ncside, cells, n_part, par);
-
+	
     // compute the gravitational force applied to each particle
     calc_all_particle_force(ncside, cells, n_part, par);
 

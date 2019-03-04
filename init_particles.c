@@ -23,7 +23,8 @@ void init_particles(long seed, long ncside, long long n_part, particle_t *par){
         par[i].vx = RND0_1 / ncside / 10.0;
         par[i].vy = RND0_1 / ncside / 10.0;
         par[i].m = RND0_1 * ncside / (G * 1e6 * n_part);
-        par[i].f = 0; // added gravitational force
+        par[i].fx = 0; // added gravitational force
+        par[i].fy = 0; // added gravitational force
     }
 }
 
