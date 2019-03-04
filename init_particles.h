@@ -5,25 +5,28 @@
 *                                   Beatriz Marques , 80809                                    *
 *                                   Carlos  Carvalho, 81395                                    *
 *                                   Diogo   Nunes   , 85184                                    *
-*                                                                  *
-*           Copyright (c) 2019 Beatriz, Carlos e Diogo. All rights reserved.           *
+*                	              							       *
+*		    Copyright (c) 2019 Beatriz, Carlos e Diogo. All rights reserved.           *
 *                                                                                              *
 ***********************************************************************************************/
 
-#include "init_particles.h"
+#ifndef INIT_PARTICLES_H
+#define INIT_PARTICLES_H
 
-void init_particles(long seed, long ncside, long long n_part, particle_t *par){
-    long long i;
+#include <stdlib.h>
 
-    srandom(seed);
+#define RND0_1 ((double) random() / ((long long)1<<31))
+#define G 6.67408e-11
+#define EPSLON 0.01
 
-    for(i = 0; i < n_part; i++){
-        par[i].x = RND0_1;
-        par[i].y = RND0_1;
-        par[i].vx = RND0_1 / ncside / 10.0;
-        par[i].vy = RND0_1 / ncside / 10.0;
-        par[i].m = RND0_1 * ncside / (G * 1e6 * n_part);
-        par[i].f = 0; // added gravitational force
-    }
-}
+typedef struct particle_t {
+    double x, y, vx, vy, m;
+    double f;
+} particle_t;
+
+
+
+void init_particles(long seed, long ncside, long long n_part, particle_t *par);
+
+#endif
 

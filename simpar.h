@@ -5,25 +5,23 @@
 *                                   Beatriz Marques , 80809                                    *
 *                                   Carlos  Carvalho, 81395                                    *
 *                                   Diogo   Nunes   , 85184                                    *
-*                                                                  *
-*           Copyright (c) 2019 Beatriz, Carlos e Diogo. All rights reserved.           *
+*                	              							       *
+*		    Copyright (c) 2019 Beatriz, Carlos e Diogo. All rights reserved.           *
 *                                                                                              *
 ***********************************************************************************************/
 
-#include "init_particles.h"
+#ifndef SIMPAR_H
+#define SIMPAR_H
 
-void init_particles(long seed, long ncside, long long n_part, particle_t *par){
-    long long i;
+/*
+All type definitions
+*/
 
-    srandom(seed);
+typedef struct cell_t {
+    // if cell has npar == 0, then it does not have any par inside
+	double x, y, m;
+    int npar;
+} cell_t;
 
-    for(i = 0; i < n_part; i++){
-        par[i].x = RND0_1;
-        par[i].y = RND0_1;
-        par[i].vx = RND0_1 / ncside / 10.0;
-        par[i].vy = RND0_1 / ncside / 10.0;
-        par[i].m = RND0_1 * ncside / (G * 1e6 * n_part);
-        par[i].f = 0; // added gravitational force
-    }
-}
 
+#endif
