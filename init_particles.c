@@ -5,8 +5,8 @@
 *                                   Beatriz Marques , 80809                                    *
 *                                   Carlos  Carvalho, 81395                                    *
 *                                   Diogo   Nunes   , 85184                                    *
-*                                                                  *
-*           Copyright (c) 2019 Beatriz, Carlos e Diogo. All rights reserved.           *
+*                                                                                              *
+*           Copyright (c) 2019 Beatriz, Carlos e Diogo. All rights reserved.                   *
 *                                                                                              *
 ***********************************************************************************************/
 
