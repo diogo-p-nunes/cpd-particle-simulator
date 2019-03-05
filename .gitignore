@@ -13,6 +13,7 @@ a.out.dSYM
 *.so
 *.out
 *.so
+simpar
 
 # Packages #
 ############
