@@ -50,7 +50,7 @@ void print_cells(long ncside, cell_t **cells)
     }
 }
 
-void calc_all_cells_cm(long ncside, cell_t **cells, long long n_part, particle_t *par, CMASS *c_mass)
+void calc_all_cells_cm(long ncside, cell_t **cells, long long n_part, particle_t *par)
 {
     /*
      *  Determine center of mass of all cells.
@@ -82,12 +82,24 @@ void calc_all_cells_cm(long ncside, cell_t **cells, long long n_part, particle_t
             {
                 cells[i][j].x = cells[i][j].x / cells[i][j].m;
                 cells[i][j].y = cells[i][j].y / cells[i][j].m;
-
-                c_mass->x += cells[i][j].x;
-                c_mass->y += cells[i][j].y;
             }
         }
     }
+}
+
+void calc_and_print_overall_cm(long long n_part, particle_t *par) {
+    int i;
+    double cmx = 0, cmy = 0, cmm = 0;
+    for(i=0; i < n_part; i++) {
+        cmx += par[i].x * par[i].m;
+        cmy += par[i].y * par[i].m;
+        cmm += par[i].m;
+    }
+
+    cmx = cmx / cmm;
+    cmy = cmy / cmm;
+
+    printf("%.2f %.2f\n", cmx, cmy);
 }
 
 double euclidean_distance(double x1, double x2, double y1, double y2)
@@ -315,7 +327,6 @@ int main(int argc, char *argv[])
     long n_tsteps = strtol(argv[4], NULL, 10);
 
     int i;
-    CMASS c_mass = {0,0};
     particle_t *par = malloc(n_part * sizeof(particle_t));
     init_particles(nseed, ncside, n_part, par);
 
@@ -326,14 +337,19 @@ int main(int argc, char *argv[])
     for (i = 0; i < n_tsteps; i++)
     {
         // determine center of mass of all cells
-        calc_all_cells_cm(ncside, cells, n_part, par, &c_mass);
+        calc_all_cells_cm(ncside, cells, n_part, par);
+
         // compute the gravitational force applied to each particle
         calc_all_particle_force(ncside, cells, n_part, par);
+
         //print_particles(n_part, par);
         calc_all_particle_new_values(ncside, n_part, par);
     }
 
-    printf("%.2f %.2f\n%.2f %.2f\n", par[0].x, par[0].y, c_mass.x, c_mass.y);
+
+    // Print the desired outputs
+    printf("%.2f %.2f\n", par[0].x, par[0].y);
+    calc_and_print_overall_cm(n_part, par);
 
     //print_particles(n_part, par);
     //print_cells(ncside, cells);

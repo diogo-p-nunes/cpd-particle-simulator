@@ -23,11 +23,4 @@ typedef struct cell_t{
     int npar;
 } cell_t;
 
-typedef struct c_mass{
-
-    double x, y;
-
-} CMASS;
-
-
 #endif
