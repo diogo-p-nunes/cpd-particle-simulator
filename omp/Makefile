@@ -33,4 +33,4 @@ zip: clean
 	zip cpd_18.zip simpar.c simpar.h init_particles.c init_particles.h Makefile README.md
 
 clean:
-	rm -f *.o simpar *.inc *.rc *.mod.c *.tab.c *.txt
+	rm -f *.o simpar *.inc *.rc *.mod.c *.tab.c

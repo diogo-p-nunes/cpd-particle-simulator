@@ -14,7 +14,6 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 
 /**********
  * HELPERS
@@ -54,6 +53,8 @@ void print_cells(long ncside, cell_t **cells) {
 void calc_and_print_overall_cm(long long n_part, particle_t *par) {
   int i;
   double cmx = 0, cmy = 0, cmm = 0;
+
+  #pragma omp parallel for reduction (+:cmx,cmy,cmm)
   for (i = 0; i < n_part; i++) {
     cmx += par[i].x * par[i].m;
     cmy += par[i].y * par[i].m;
@@ -78,6 +79,8 @@ double euclidean_distance(double x1, double x2, double y1, double y2) {
 void free_memory(int ncside, cell_t **cells, particle_t *par) {
   free(par);
   int i;
+
+  #pragma omp parallel for
   for (i = 0; i < ncside; i++)
     free(cells[i]);
   free(cells);
@@ -142,6 +145,7 @@ void calc_all_particle_force(long ncside, cell_t **cells, long long n_part,
   int i, cellx, celly, cx, cy;
   double interval = 1.0 / ncside;
 
+  #pragma omp parallel for
   for (i = 0; i < n_part; i++) {
     cellx = calc_cell_number(par[i].x, interval, ncside);
     celly = calc_cell_number(par[i].y, interval, ncside);
@@ -209,6 +213,7 @@ void calc_all_particle_new_values(long ncside, long long n_part,
   int i;
   double acc_x, acc_y;
 
+  #pragma omp parallel for
   for (i = 0; i < n_part; i++) {
     // acceleration of the particle
     acc_x = par[i].fx / par[i].m;
@@ -221,7 +226,8 @@ void calc_all_particle_new_values(long ncside, long long n_part,
 
 void init_particle_force(particle_t *par, long long n_part) {
   int i;
-#pragma omp parallel for
+
+  #pragma omp parallel for
   for (i = 0; i < n_part; i++) {
     par[i].fx = 0;
     par[i].fy = 0;
@@ -248,6 +254,7 @@ void calc_all_cells_cm(long ncside, cell_t **cells, long long n_part,
   int i, j, cellx, celly;
   double interval = 1.0 / ncside;
 
+  #pragma omp parallel for reduction (+:&cells)
   for (i = 0; i < n_part; i++) {
     cellx = calc_cell_number(par[i].x, interval, ncside);
     celly = calc_cell_number(par[i].y, interval, ncside);
@@ -271,6 +278,8 @@ void calc_all_cells_cm(long ncside, cell_t **cells, long long n_part,
 void init_cells_matrix(long ncside, cell_t **cells) {
   // default value to 0
   int i, j;
+
+  #pragma omp parallel for
   for (i = 0; i < ncside; i++) {
     for (j = 0; j < ncside; j++) {
       cells[i][j].x = 0;
@@ -284,7 +293,8 @@ void init_cells_matrix(long ncside, cell_t **cells) {
 void create_cells_matrix(long ncside, cell_t **cells) {
   // access cell (x, y) => cells[x][y]
   int i;
-#pragma omp parallel for
+
+  #pragma omp parallel for
   for (i = 0; i < ncside; i++) {
     cells[i] = malloc(ncside * sizeof(cell_t));
   }
@@ -295,9 +305,6 @@ void create_cells_matrix(long ncside, cell_t **cells) {
  *******/
 
 int main(int argc, char *argv[]) {
-
-  clock_t start, end;
-  start = clock();
 
   // receive exactly 4 arguments (first is file name)
   if (argc != 5)
@@ -346,7 +353,5 @@ int main(int argc, char *argv[]) {
   // free memory
   free_memory(ncside, cells, par);
 
-  end = clock();
-  printf("[TIME/s] %f\n", (double)(end - start) / CLOCKS_PER_SEC);
   return EXIT_SUCCESS;
 }
