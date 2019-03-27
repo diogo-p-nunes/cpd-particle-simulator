@@ -14,6 +14,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 /**********
  * HELPERS
@@ -297,6 +298,10 @@ int main(int argc, char *argv[]) {
   if (argc != 5)
     return EXIT_FAILURE;
 
+  clock_t start, end;
+
+  start = clock();
+
   // init values
   long nseed = strtol(argv[1], NULL, 10);
   long ncside = strtol(argv[2], NULL, 10);
@@ -334,6 +339,11 @@ int main(int argc, char *argv[]) {
 
   // free memory
   free_memory(ncside, cells, par);
+
+  end = clock();
+
+  printf("%f\n", (double)(end-start) / CLOCKS_PER_SEC);
+
 
   return EXIT_SUCCESS;
 }

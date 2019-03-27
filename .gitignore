@@ -1,6 +1,7 @@
 # Don't track content of these folders
 a.out.dSYM
 .vscode/
+.idea/
 
 
 # Compiled source #
