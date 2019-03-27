@@ -19,28 +19,33 @@
  * HELPERS
  **********/
 
-void print_particles(long long n_part, particle_t *par) {
+void print_particles(long long n_part, particle_t *par)
+{
   /*
    *  Helper function to visualize each particle's position and mass
    *  print = (x, y) - m
    * */
   printf("[Particles]\n");
   int i;
-  for (i = 0; i < n_part; i++) {
+  for (i = 0; i < n_part; i++)
+  {
     printf("\tp=(%f, %f) | f=(%f, %f)\n", par[i].x, par[i].y, par[i].fx,
            par[i].fy);
   }
 }
 
-void print_cells(long ncside, cell_t **cells) {
+void print_cells(long ncside, cell_t **cells)
+{
   /*
    *  Helper function to visualize each cells's position and mass
    *  print = (x, y) - m
    * */
   printf("[Cells]\n");
   int i, j;
-  for (i = 0; i < ncside; i++) {
-    for (j = 0; j < ncside; j++) {
+  for (i = 0; i < ncside; i++)
+  {
+    for (j = 0; j < ncside; j++)
+    {
       printf("\t(%f, %f) - %f\n", cells[i][j].x, cells[i][j].y, cells[i][j].m);
     }
   }
@@ -50,12 +55,15 @@ void print_cells(long ncside, cell_t **cells) {
  * AUX FUNCTIONS
  ****************/
 
-void calc_and_print_overall_cm(long long n_part, particle_t *par) {
+void calc_and_print_overall_cm(long long n_part, particle_t *par)
+{
   int i;
   double cmx = 0, cmy = 0, cmm = 0;
 
-  #pragma omp parallel for reduction (+:cmx,cmy,cmm)
-  for (i = 0; i < n_part; i++) {
+#pragma omp parallel for reduction(+ \
+                                   : cmx, cmy, cmm)
+  for (i = 0; i < n_part; i++)
+  {
     cmx += par[i].x * par[i].m;
     cmy += par[i].y * par[i].m;
     cmm += par[i].m;
@@ -67,7 +75,8 @@ void calc_and_print_overall_cm(long long n_part, particle_t *par) {
   printf("%.2f %.2f\n", cmx, cmy);
 }
 
-double euclidean_distance(double x1, double x2, double y1, double y2) {
+double euclidean_distance(double x1, double x2, double y1, double y2)
+{
   /*
    *  Compute Euclidean distance between two points (x1,y1) and (x2,y2)
    * */
@@ -76,17 +85,19 @@ double euclidean_distance(double x1, double x2, double y1, double y2) {
   return sqrt(dx * dx + dy * dy);
 }
 
-void free_memory(int ncside, cell_t **cells, particle_t *par) {
+void free_memory(int ncside, cell_t **cells, particle_t *par)
+{
   free(par);
   int i;
 
-  #pragma omp parallel for
+#pragma omp parallel for
   for (i = 0; i < ncside; i++)
     free(cells[i]);
   free(cells);
 }
 
-int wrap_around(int index, long min, long max) {
+int wrap_around(int index, long min, long max)
+{
   if (index < min)
     return (max);
   if (index > (max))
@@ -99,7 +110,8 @@ int wrap_around(int index, long min, long max) {
  * PARTICLE FUNCTIONS
  *********************/
 
-void update_force(cell_t *cell, particle_t *particle) {
+void update_force(cell_t *cell, particle_t *particle)
+{
   /*
    * Update the gravitacional force of particle i
    * applied by the center of mass from cell (cellx, celly).
@@ -107,12 +119,16 @@ void update_force(cell_t *cell, particle_t *particle) {
    * */
   double dist, fx, fy, magnitude, norm;
 
-  if (cell->npar != 0) {
+  if (cell->npar != 0)
+  {
     dist = euclidean_distance(cell->x, particle->x, cell->y, particle->y);
 
-    if (dist >= EPSLON) {
+    if (dist >= EPSLON)
+    {
       magnitude = (G * particle->m * cell->m) / (dist * dist);
-    } else {
+    }
+    else
+    {
       magnitude = 0;
     }
 
@@ -121,7 +137,8 @@ void update_force(cell_t *cell, particle_t *particle) {
     fy = cell->y - particle->y;
     norm = sqrt(fx * fx + fy * fy);
 
-    if (norm != 0) {
+    if (norm != 0)
+    {
       // normalize direction vector
       fx = fx / norm;
       fy = fy / norm;
@@ -134,7 +151,8 @@ void update_force(cell_t *cell, particle_t *particle) {
 }
 
 void calc_all_particle_force(long ncside, cell_t **cells, long long n_part,
-                             particle_t *par) {
+                             particle_t *par)
+{
   /*
    *  Determine gravitational force for each particle.
    *  A particle is influenced by gravity from all the center of masses
@@ -145,8 +163,9 @@ void calc_all_particle_force(long ncside, cell_t **cells, long long n_part,
   int i, cellx, celly, cx, cy;
   double interval = 1.0 / ncside;
 
-  #pragma omp parallel for
-  for (i = 0; i < n_part; i++) {
+#pragma omp parallel for
+  for (i = 0; i < n_part; i++)
+  {
     cellx = calc_cell_number(par[i].x, interval, ncside);
     celly = calc_cell_number(par[i].y, interval, ncside);
 
@@ -154,8 +173,10 @@ void calc_all_particle_force(long ncside, cell_t **cells, long long n_part,
     // start on the top left cell in relation to this one
     cx = wrap_around(cellx - 1, 0, ncside - 1);
     cy = wrap_around(celly + 1, 0, ncside - 1);
-    for (k = 0; k < 3; k++) {
-      for (j = 0; j < 3; j++) {
+    for (k = 0; k < 3; k++)
+    {
+      for (j = 0; j < 3; j++)
+      {
         // update force
         update_force(&cells[cx][cy], &par[i]);
 
@@ -169,7 +190,8 @@ void calc_all_particle_force(long ncside, cell_t **cells, long long n_part,
   }
 }
 
-void update_vel(double acc_x, double acc_y, particle_t *particle) {
+void update_vel(double acc_x, double acc_y, particle_t *particle)
+{
   /*
    * Update the velocity vector of particle i
    * */
@@ -177,7 +199,8 @@ void update_vel(double acc_x, double acc_y, particle_t *particle) {
   particle->vy += acc_y;
 }
 
-void update_pos(double acc_x, double acc_y, particle_t *particle) {
+void update_pos(double acc_x, double acc_y, particle_t *particle)
+{
   /*
    * Update the velocity and then the position vector of particle i
    * */
@@ -206,15 +229,17 @@ void update_pos(double acc_x, double acc_y, particle_t *particle) {
 }
 
 void calc_all_particle_new_values(long ncside, long long n_part,
-                                  particle_t *par) {
+                                  particle_t *par)
+{
   /*
    *  Calculate the new velocity and then the new position of each particle.
    * */
   int i;
   double acc_x, acc_y;
 
-  #pragma omp parallel for
-  for (i = 0; i < n_part; i++) {
+#pragma omp parallel for
+  for (i = 0; i < n_part; i++)
+  {
     // acceleration of the particle
     acc_x = par[i].fx / par[i].m;
     acc_y = par[i].fy / par[i].m;
@@ -224,11 +249,13 @@ void calc_all_particle_new_values(long ncside, long long n_part,
   }
 }
 
-void init_particle_force(particle_t *par, long long n_part) {
+void init_particle_force(particle_t *par, long long n_part)
+{
   int i;
 
-  #pragma omp parallel for
-  for (i = 0; i < n_part; i++) {
+#pragma omp parallel for
+  for (i = 0; i < n_part; i++)
+  {
     par[i].fx = 0;
     par[i].fy = 0;
   }
@@ -238,12 +265,14 @@ void init_particle_force(particle_t *par, long long n_part) {
  * CELL FUNCTIONS
  *****************/
 
-int calc_cell_number(double pos, double interval, long ncside) {
+int calc_cell_number(double pos, double interval, long ncside)
+{
   return labs(((int)floor(pos / interval)) % ncside);
 }
 
 void calc_all_cells_cm(long ncside, cell_t **cells, long long n_part,
-                       particle_t *par) {
+                       particle_t *par)
+{
   /*
    *  Determine center of mass of all cells.
    *  For each particle, determine to which cell it belongs,
@@ -254,8 +283,8 @@ void calc_all_cells_cm(long ncside, cell_t **cells, long long n_part,
   int i, j, cellx, celly;
   double interval = 1.0 / ncside;
 
-  #pragma omp parallel for reduction (+:&cells)
-  for (i = 0; i < n_part; i++) {
+  for (i = 0; i < n_part; i++)
+  {
     cellx = calc_cell_number(par[i].x, interval, ncside);
     celly = calc_cell_number(par[i].y, interval, ncside);
 
@@ -265,9 +294,12 @@ void calc_all_cells_cm(long ncside, cell_t **cells, long long n_part,
     cells[cellx][celly].npar++;
   }
   // after all total masses and positions have been determined
-  for (i = 0; i < ncside; i++) {
-    for (j = 0; j < ncside; j++) {
-      if (cells[i][j].npar != 0) {
+  for (i = 0; i < ncside; i++)
+  {
+    for (j = 0; j < ncside; j++)
+    {
+      if (cells[i][j].npar != 0)
+      {
         cells[i][j].x = cells[i][j].x / cells[i][j].m;
         cells[i][j].y = cells[i][j].y / cells[i][j].m;
       }
@@ -275,13 +307,16 @@ void calc_all_cells_cm(long ncside, cell_t **cells, long long n_part,
   }
 }
 
-void init_cells_matrix(long ncside, cell_t **cells) {
+void init_cells_matrix(long ncside, cell_t **cells)
+{
   // default value to 0
   int i, j;
 
-  #pragma omp parallel for
-  for (i = 0; i < ncside; i++) {
-    for (j = 0; j < ncside; j++) {
+#pragma omp parallel for
+  for (i = 0; i < ncside; i++)
+  {
+    for (j = 0; j < ncside; j++)
+    {
       cells[i][j].x = 0;
       cells[i][j].y = 0;
       cells[i][j].m = 0;
@@ -290,12 +325,14 @@ void init_cells_matrix(long ncside, cell_t **cells) {
   }
 }
 
-void create_cells_matrix(long ncside, cell_t **cells) {
+void create_cells_matrix(long ncside, cell_t **cells)
+{
   // access cell (x, y) => cells[x][y]
   int i;
 
-  #pragma omp parallel for
-  for (i = 0; i < ncside; i++) {
+#pragma omp parallel for
+  for (i = 0; i < ncside; i++)
+  {
     cells[i] = malloc(ncside * sizeof(cell_t));
   }
 }
@@ -304,7 +341,8 @@ void create_cells_matrix(long ncside, cell_t **cells) {
  * MAIN
  *******/
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
 
   // receive exactly 4 arguments (first is file name)
   if (argc != 5)
@@ -331,7 +369,8 @@ int main(int argc, char *argv[]) {
   init_cells_matrix(ncside, cells);
 
   int i;
-  for (i = 0; i < n_tsteps; i++) {
+  for (i = 0; i < n_tsteps; i++)
+  {
     // determine center of mass of all cells
     calc_all_cells_cm(ncside, cells, n_part, par);
 

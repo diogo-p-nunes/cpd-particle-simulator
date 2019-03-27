@@ -17,9 +17,10 @@
 
 #define RND0_1 ((double)random() / ((long long)1 << 31))
 #define G 6.67408e-11
-#define EPSLON 0.01
+#define EPSLON 0.0005
 
-typedef struct particle_t {
+typedef struct particle_t
+{
   double x, y, vx, vy, m;
   double fx, fy;
 } particle_t;

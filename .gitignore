@@ -1,5 +1,5 @@
 # Don't track content of these folders
-a.out.dSYM
+*.dSYM
 .vscode/
 .idea/
 
@@ -14,6 +14,10 @@ a.out.dSYM
 *.so
 *.out
 *.so
+*.rc
+*.tab.c
+*.inc
+*.mod.c
 simpar
 
 # Packages #
