@@ -1,12 +1,12 @@
 /***********************************************************************************************
  *                                                                                              *
- *                                          Grupo: 18 *
+ *                                          Grupo: 18                                           *
  *                                                                                              *
- *                                   Beatriz Marques , 80809 * Carlos  Carvalho,
- *81395                                    * Diogo   Nunes   , 85184 *
- *                	              							       *
- *		    Copyright (c) 2019 Beatriz, Carlos e Diogo. All rights
- *reserved.           *
+ *                                   Beatriz Marques , 80809                                    *
+ *                                   Carlos  Carvalho, 81395                                    *
+ *                                   Diogo   Nunes   , 85184                                    *
+ *                	              							                                    *
+ *		    Copyright (c) 2019 Beatriz, Carlos e Diogo. All rights reserved.                    *
  *                                                                                              *
  ***********************************************************************************************/
 
@@ -20,8 +20,8 @@
 #define EPSLON 0.0005
 
 typedef struct particle_t {
-  double x, y, vx, vy, m;
-  double fx, fy;
+    double x, y, vx, vy, m;
+    double fx, fy;
 } particle_t;
 
 void init_particles(long seed, long ncside, long long n_part, particle_t *par);

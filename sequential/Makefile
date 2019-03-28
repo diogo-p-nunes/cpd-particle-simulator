@@ -18,7 +18,7 @@
 CFLAGS = -g -Wall -pedantic -std=gnu99
 CC = gcc
 
-all: simpar
+all: clean simpar
 
 simpar: simpar.o init_particles.o
 	$(CC) $(CFLAGS) -o simpar simpar.o init_particles.o

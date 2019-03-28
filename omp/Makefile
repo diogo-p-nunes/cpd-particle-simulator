@@ -18,7 +18,7 @@
 CFLAGS = -fopenmp -g -Wall -pedantic -std=gnu99
 CC = kinst-ompp gcc-8
 
-all: simpar
+all: clean simpar
 
 simpar: simpar.o init_particles.o
 	$(CC) $(CFLAGS) -o simpar simpar.o init_particles.o
