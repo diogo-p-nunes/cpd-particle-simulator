@@ -9,11 +9,15 @@
  *		    Copyright (c) 2019 Beatriz, Carlos e Diogo. All rights reserved.                    *
  *                                                                                              *
  ***********************************************************************************************/
+
 #include "simpar.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+
+#define euclidean(x1,x2,y1,y2)       ((sqrt((x1 - x2)*(x1 - x2) + (y1 - y2)*(y1 - y2))))
+#define wrap_around(index, min, max) (index < min ? max : (index > max ) ? min : index)
 
 /**********
  * HELPERS
@@ -64,30 +68,12 @@ void calc_and_print_overall_cm(long long n_part, particle_t *par) {
     printf("%.2f %.2f\n", cmx, cmy);
 }
 
-double euclidean_distance(double x1, double x2, double y1, double y2) {
-    /*
-     *  Compute Euclidean distance between two points (x1,y1) and (x2,y2)
-     * */
-    double dx = (x1 - x2);
-    double dy = (y1 - y2);
-    return sqrt(dx * dx + dy * dy);
-}
-
 void free_memory(int ncside, cell_t **cells, particle_t *par) {
     free(par);
     int i;
     for (i = 0; i < ncside; i++)
         free(cells[i]);
     free(cells);
-}
-
-int wrap_around(int index, long min, long max) {
-    if (index < min)
-        return (max);
-    if (index > (max))
-        return min;
-    else
-        return index;
 }
 
 /*********************
@@ -103,7 +89,7 @@ void update_force(cell_t *cell, particle_t *particle) {
     double dist, fx, fy, magnitude, norm;
 
     if (cell->npar != 0) {
-        dist = euclidean_distance(cell->x, particle->x, cell->y, particle->y);
+        dist = euclidean(cell->x, particle->x, cell->y, particle->y);
 
         if (dist >= EPSLON) {
             magnitude = (G * particle->m * cell->m) / (dist * dist);
@@ -190,9 +176,9 @@ void update_pos(double acc_x, double acc_y, particle_t *particle) {
     if (y_new < 0)
         y_new = 1 - fabs(y_new);
 
-    if (x_new > 1)
+    if (x_new >= 1)
         x_new = x_new - 1;
-    if (y_new > 1)
+    if (y_new >= 1)
         y_new = y_new - 1;
 
     particle->x = x_new;
@@ -300,6 +286,9 @@ int main(int argc, char *argv[]) {
     if (argc != 5)
         return EXIT_FAILURE;
 
+    clock_t start, end;
+
+    start = clock();
 
     // init values
     long nseed = strtol(argv[1], NULL, 10);
@@ -338,6 +327,10 @@ int main(int argc, char *argv[]) {
 
     // free memory
     free_memory(ncside, cells, par);
+
+    end = clock();
+
+    printf("%f seconds\n", (double)(end-start)/(CLOCKS_PER_SEC));
 
     return EXIT_SUCCESS;
 }
