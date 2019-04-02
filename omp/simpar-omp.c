@@ -132,7 +132,7 @@ void calc_all_particle_force(long ncside, cell_t **cells, long long n_part,
     int i, cellx, celly, cx, cy;
     double interval = 1.0 / ncside;
 
-#pragma omp parallel for private(cellx, celly, cx, cy)
+#pragma omp for private(cellx, celly, cx, cy)
     // variable i is implicitly private
     for (i = 0; i < n_part; i++) {
         cellx = calc_cell_number(par[i].x, interval, ncside);
@@ -200,7 +200,7 @@ void calc_all_particle_new_values(long ncside, long long n_part, particle_t *par
     int i;
     double acc_x, acc_y;
 
-#pragma omp parallel for private(acc_x, acc_y)
+#pragma omp for private(acc_x, acc_y)
     // variable i is implicitly private
     for (i = 0; i < n_part; i++) {
         // acceleration of the particle
@@ -215,7 +215,7 @@ void calc_all_particle_new_values(long ncside, long long n_part, particle_t *par
 void init_particle_force(particle_t *par, long long n_part) {
     int i;
 
-#pragma omp parallel for
+#pragma omp for
     // variable i is implicitly private
     for (i = 0; i < n_part; i++) {
         par[i].fx = 0;
@@ -244,7 +244,9 @@ void calc_all_cells_cm(long ncside, cell_t **cells, long long n_part, particle_t
     double interval = 1.0 / ncside;
     cell_t cell;
 
-#pragma omp parallel for private(cx, cy) reduction(cm: cell)
+#pragma omp parallel
+{
+#pragma omp for private(cx, cy, i) reduction(cm: cell)
     for (i = 0; i < n_part; i++) {
         cx = calc_cell_number(par[i].x, interval, ncside);
         cy = calc_cell_number(par[i].y, interval, ncside);
@@ -257,7 +259,7 @@ void calc_all_cells_cm(long ncside, cell_t **cells, long long n_part, particle_t
     }
     // after all total masses and positions have been determined
 
-#pragma omp parallel for
+#pragma omp for private(i, j)
     for (i = 0; i < ncside; i++) {
         for (j = 0; j < ncside; j++) {
             cell = cells[i][j];
@@ -268,13 +270,15 @@ void calc_all_cells_cm(long ncside, cell_t **cells, long long n_part, particle_t
         }
     }
 }
+}
+
 
 void init_cells_matrix(long ncside, cell_t **cells) {
     // default value to 0
     int i, j;
     cell_t cell;
 
-#pragma omp parallel for private(cell)
+#pragma omp parallel for private(cell, j)
     for (i = 0; i < ncside; i++) {
         for (j = 0; j < ncside; j++) {
             cell = cells[i][j];
@@ -327,9 +331,11 @@ int main(int argc, char *argv[]) {
 
     int i;
     for (i = 0; i < n_tsteps; i++) {
+
         // determine center of mass of all cells
         calc_all_cells_cm(ncside, cells, n_part, par);
-
+#pragma omp parallel
+{
         // compute the gravitational force applied to each particle
         calc_all_particle_force(ncside, cells, n_part, par);
 
@@ -337,8 +343,10 @@ int main(int argc, char *argv[]) {
         calc_all_particle_new_values(ncside, n_part, par);
 
         // init cells and particles aplied forces for next timestep
-        init_cells_matrix(ncside, cells);
         init_particle_force(par, n_part);
+}
+
+        init_cells_matrix(ncside, cells);
     }
 
     // Print the desired outputs
