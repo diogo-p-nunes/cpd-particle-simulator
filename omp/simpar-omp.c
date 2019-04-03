@@ -1,19 +1,22 @@
 /***********************************************************************************************
- *                                                                                              *
- *                                          Grupo: 18                                           *
- *                                                                                              *
- *                                   Beatriz Marques , 80809                                    *
- *                                   Carlos  Carvalho, 81395                                    *
- *                                   Diogo   Nunes   , 85184                                    *
- *                	              							                                    *
- *		    Copyright (c) 2019 Beatriz, Carlos e Diogo. All rights reserved.                    *
- *                                                                                              *
- ***********************************************************************************************/
+*                                                                                              *
+*                                          Grupo: 18                                           *
+*                                                                                              *
+*                                   Beatriz Marques , 80809                                    *
+*                                   Carlos  Carvalho, 81395                                    *
+*                                   Diogo   Nunes   , 85184                                    *
+*                	              							                                   *
+*		    Copyright (c) 2019 Beatriz, Carlos e Diogo. All rights reserved.                   *
+*                                                                                              *
+***********************************************************************************************/
 
-#include "simpar.h"
+#include "simpar-omp.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#define euclidean(x1,x2,y1,y2)       ((sqrt((x1 - x2)*(x1 - x2) + (y1 - y2)*(y1 - y2))))
+#define wrap_around(index, min, max) (index < min ? max : (index > max ) ? min : index)
 
 /**********
  * HELPERS
@@ -68,15 +71,6 @@ void calc_and_print_overall_cm(long long n_part, particle_t *par) {
     printf("%.2f %.2f\n", cmx, cmy);
 }
 
-double euclidean_distance(double x1, double x2, double y1, double y2) {
-    /*
-     *  Compute Euclidean distance between two points (x1,y1) and (x2,y2)
-     * */
-    double dx = (x1 - x2);
-    double dy = (y1 - y2);
-    return sqrt(dx * dx + dy * dy);
-}
-
 void free_memory(int ncside, cell_t **cells, particle_t *par) {
     free(par);
     int i;
@@ -86,15 +80,6 @@ void free_memory(int ncside, cell_t **cells, particle_t *par) {
     for (i = 0; i < ncside; i++)
         free(cells[i]);
     free(cells);
-}
-
-int wrap_around(int index, long min, long max) {
-    if (index < min)
-        return (max);
-    if (index > (max))
-        return min;
-    else
-        return index;
 }
 
 /*********************
@@ -110,7 +95,7 @@ void update_force(cell_t *cell, particle_t *particle) {
     double dist, fx, fy, magnitude, norm;
 
     if (cell->npar != 0) {
-        dist = euclidean_distance(cell->x, particle->x, cell->y, particle->y);
+        dist = euclidean(cell->x, particle->x, cell->y, particle->y);
 
         if (dist >= EPSLON) {
             magnitude = (G * particle->m * cell->m) / (dist * dist);
@@ -147,7 +132,7 @@ void calc_all_particle_force(long ncside, cell_t **cells, long long n_part,
     int i, cellx, celly, cx, cy;
     double interval = 1.0 / ncside;
 
-#pragma omp parallel for private(cellx, celly, cx, cy)
+#pragma omp for private(cellx, celly, cx, cy)
     // variable i is implicitly private
     for (i = 0; i < n_part; i++) {
         cellx = calc_cell_number(par[i].x, interval, ncside);
@@ -215,7 +200,7 @@ void calc_all_particle_new_values(long ncside, long long n_part, particle_t *par
     int i;
     double acc_x, acc_y;
 
-#pragma omp parallel for private(acc_x, acc_y)
+#pragma omp for private(acc_x, acc_y)
     // variable i is implicitly private
     for (i = 0; i < n_part; i++) {
         // acceleration of the particle
@@ -230,7 +215,7 @@ void calc_all_particle_new_values(long ncside, long long n_part, particle_t *par
 void init_particle_force(particle_t *par, long long n_part) {
     int i;
 
-#pragma omp parallel for
+#pragma omp for
     // variable i is implicitly private
     for (i = 0; i < n_part; i++) {
         par[i].fx = 0;
@@ -259,7 +244,9 @@ void calc_all_cells_cm(long ncside, cell_t **cells, long long n_part, particle_t
     double interval = 1.0 / ncside;
     cell_t cell;
 
-#pragma omp parallel for private(cx, cy) reduction(cm: cell)
+#pragma omp parallel
+{
+#pragma omp for private(cx, cy, i) reduction(cm: cell)
     for (i = 0; i < n_part; i++) {
         cx = calc_cell_number(par[i].x, interval, ncside);
         cy = calc_cell_number(par[i].y, interval, ncside);
@@ -272,7 +259,7 @@ void calc_all_cells_cm(long ncside, cell_t **cells, long long n_part, particle_t
     }
     // after all total masses and positions have been determined
 
-#pragma omp parallel for
+#pragma omp for private(i, j)
     for (i = 0; i < ncside; i++) {
         for (j = 0; j < ncside; j++) {
             cell = cells[i][j];
@@ -283,13 +270,15 @@ void calc_all_cells_cm(long ncside, cell_t **cells, long long n_part, particle_t
         }
     }
 }
+}
+
 
 void init_cells_matrix(long ncside, cell_t **cells) {
     // default value to 0
     int i, j;
     cell_t cell;
 
-#pragma omp parallel for private(cell)
+#pragma omp parallel for private(cell, j)
     for (i = 0; i < ncside; i++) {
         for (j = 0; j < ncside; j++) {
             cell = cells[i][j];
@@ -343,9 +332,11 @@ int main(int argc, char *argv[]) {
 
     int i;
     for (i = 0; i < n_tsteps; i++) {
+
         // determine center of mass of all cells
         calc_all_cells_cm(ncside, cells, n_part, par);
-
+#pragma omp parallel
+{
         // compute the gravitational force applied to each particle
         calc_all_particle_force(ncside, cells, n_part, par);
 
@@ -353,8 +344,10 @@ int main(int argc, char *argv[]) {
         calc_all_particle_new_values(ncside, n_part, par);
 
         // init cells and particles aplied forces for next timestep
-        init_cells_matrix(ncside, cells);
         init_particle_force(par, n_part);
+}
+
+        init_cells_matrix(ncside, cells);
     }
 
     // Print the desired outputs
