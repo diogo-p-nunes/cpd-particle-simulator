@@ -305,6 +305,7 @@ void create_cells_matrix(long ncside, cell_t **cells) {
     // access cell (x, y) => cells[x][y]
     int i;
 
+#pragma omp parallel for
     for (i = 0; i < ncside; i++) {
         cells[i] = malloc(ncside * sizeof(cell_t));
     }
