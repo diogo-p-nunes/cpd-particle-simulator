@@ -3,4 +3,4 @@ Parallel version (shared memory) using OMP.
 
 ## Run
     $ make
-    $ ./simpar _input data_
+    $ ./simpar-omp _input data_
