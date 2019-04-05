@@ -10,7 +10,7 @@
 *                                                                                              *
 ***********************************************************************************************/
 
-#include "simpar.h"
+#include "simpar-omp.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>

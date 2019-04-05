@@ -21,7 +21,7 @@ CC = gcc
 all: clean simpar
 
 simpar: simpar.o init_particles.o
-	$(CC) $(CFLAGS) -o simpar simpar.o init_particles.o
+	$(CC) $(CFLAGS) -o simpar simpar.o init_particles.o -lm
 
 simpar.o: simpar.c simpar.h init_particles.h
 	$(CC) $(CFLAGS) -c simpar.c

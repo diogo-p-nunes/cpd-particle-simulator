@@ -18,16 +18,16 @@
 CFLAGS = -fopenmp -g -pedantic -std=gnu99
 CC = gcc-8
 
-all: clean simpar
+all: clean simpar-omp
 
-simpar: simpar.o init_particles.o
-	$(CC) $(CFLAGS) -o simpar simpar.o init_particles.o
+simpar-omp: simpar-omp.o init_particles.o
+	$(CC) $(CFLAGS) -o simpar-omp simpar-omp.o init_particles.o -lm
 
-simpar.o: simpar.c simpar.h init_particles.h
-	$(CC) $(CFLAGS) -c simpar.c
+simpar-omp.o: simpar-omp.c simpar-omp.h init_particles.h
+	$(CC) $(CFLAGS) -c simpar-omp.c
 
 init_particles.o: init_particles.c init_particles.h
 	$(CC) $(CFLAGS) -c init_particles.c
 
 clean:
-	rm -rf *.o simpar *.inc *.rc *.mod.c *.tab.c *.dSYM
+	rm -rf *.o simpar-omp *.inc *.rc *.mod.c *.tab.c *.dSYM

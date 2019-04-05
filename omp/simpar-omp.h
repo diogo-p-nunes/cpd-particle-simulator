@@ -9,8 +9,8 @@
  *		    Copyright (c) 2019 Beatriz, Carlos e Diogo. All rights reserved.                    *
  *                                                                                              *
  ***********************************************************************************************/
-#ifndef SIMPAR_H
-#define SIMPAR_H
+#ifndef SIMPAR_OMP_H
+#define SIMPAR_OMP_H
 
 #include "init_particles.h"
 
