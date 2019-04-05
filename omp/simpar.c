@@ -10,12 +10,12 @@
 *                                                                                              *
 ***********************************************************************************************/
 
-#include "simpar-omp.h"
+#include "simpar.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-#define euclidean(x1,x2,y1,y2)       ((sqrt((x1 - x2)*(x1 - x2) + (y1 - y2)*(y1 - y2))))
+#define euclidean(x1, x2, y1, y2)       ((sqrt((x1 - x2)*(x1 - x2) + (y1 - y2)*(y1 - y2))))
 #define wrap_around(index, min, max) (index < min ? max : (index > max ) ? min : index)
 
 /**********
@@ -245,31 +245,31 @@ void calc_all_cells_cm(long ncside, cell_t **cells, long long n_part, particle_t
     cell_t cell;
 
 #pragma omp parallel
-{
+    {
 #pragma omp for private(cx, cy, i) reduction(cm: cell)
-    for (i = 0; i < n_part; i++) {
-        cx = calc_cell_number(par[i].x, interval, ncside);
-        cy = calc_cell_number(par[i].y, interval, ncside);
-        cell = cells[cx][cy];
+        for (i = 0; i < n_part; i++) {
+            cx = calc_cell_number(par[i].x, interval, ncside);
+            cy = calc_cell_number(par[i].y, interval, ncside);
+            cell = cells[cx][cy];
 
-        cell.x += par[i].x * par[i].m;
-        cell.y += par[i].y * par[i].m;
-        cell.m += par[i].m;
-        cell.npar++;
-    }
-    // after all total masses and positions have been determined
+            cell.x += par[i].x * par[i].m;
+            cell.y += par[i].y * par[i].m;
+            cell.m += par[i].m;
+            cell.npar++;
+        }
+        // after all total masses and positions have been determined
 
 #pragma omp for private(i, j)
-    for (i = 0; i < ncside; i++) {
-        for (j = 0; j < ncside; j++) {
-            cell = cells[i][j];
-            if (cell.npar != 0) {
-                cell.x = cell.x / cell.m;
-                cell.y = cell.y / cell.m;
+        for (i = 0; i < ncside; i++) {
+            for (j = 0; j < ncside; j++) {
+                cell = cells[i][j];
+                if (cell.npar != 0) {
+                    cell.x = cell.x / cell.m;
+                    cell.y = cell.y / cell.m;
+                }
             }
         }
     }
-}
 }
 
 
@@ -335,17 +335,18 @@ int main(int argc, char *argv[]) {
 
         // determine center of mass of all cells
         calc_all_cells_cm(ncside, cells, n_part, par);
+
 #pragma omp parallel
-{
-        // compute the gravitational force applied to each particle
-        calc_all_particle_force(ncside, cells, n_part, par);
+        {
+            // compute the gravitational force applied to each particle
+            calc_all_particle_force(ncside, cells, n_part, par);
 
-        // print_particles(n_part, par);
-        calc_all_particle_new_values(ncside, n_part, par);
+            // print_particles(n_part, par);
+            calc_all_particle_new_values(ncside, n_part, par);
 
-        // init cells and particles aplied forces for next timestep
-        init_particle_force(par, n_part);
-}
+            // init cells and particles aplied forces for next timestep
+            init_particle_force(par, n_part);
+        }
 
         init_cells_matrix(ncside, cells);
     }

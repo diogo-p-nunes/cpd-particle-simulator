@@ -1,0 +1,246 @@
+----------------------------------------------------------------------
+----     ompP General Information     --------------------------------
+----------------------------------------------------------------------
+Start Date      : Thu Apr 04 14:37:39 2019
+End Date        : Thu Apr 04 14:38:26 2019
+Duration        : 46.53 sec
+Application Name: unknown
+Type of Report  : final
+User Time       : 77.30 sec
+System Time     : 9.26 sec
+Max Threads     : 2
+ompP Version    : 0.8.99
+ompP Build Date : Mar 21 2019 11:49:02
+PAPI Support    : not available
+
+----------------------------------------------------------------------
+----     ompP Region Overview     ------------------------------------
+----------------------------------------------------------------------
+PARALLEL: 2 regions:
+ * R00006 simpar-omp.c (247-272)
+ * R00011 simpar-omp.c (339-349)
+
+PARALLEL LOOP: 4 regions:
+ * R00010 simpar-omp.c (297-300)
+ * R00009 simpar-omp.c (281-290)
+ * R00001 simpar-omp.c (60-66)
+ * R00002 simpar-omp.c (78-81)
+
+LOOP: 5 regions:
+ * R00007 simpar-omp.c (249-259)
+ * R00008 simpar-omp.c (262-271)
+ * R00003 simpar-omp.c (135-157)
+ * R00004 simpar-omp.c (203-212)
+ * R00005 simpar-omp.c (218-223)
+
+----------------------------------------------------------------------
+----     ompP Callgraph     ------------------------------------------
+----------------------------------------------------------------------
+
+  Inclusive  (%)   Exclusive  (%)
+  46.53 (100.0%)    0.28 ( 0.60%)           [unknown: 2 threads]
+   0.00 (0.000%)    0.00 (0.000%)  PARLOOP  |-R00010 simpar-omp.c (297-300)
+   0.00 (0.001%)    0.00 (0.001%)  PARLOOP  |-R00009 simpar-omp.c (281-290)
+  11.70 (25.15%)    0.00 ( 0.00%) PARALLEL  |-R00006 simpar-omp.c (247-272)
+  11.70 (25.15%)   11.70 (25.15%)     LOOP  |  |-R00007 simpar-omp.c (249-259)
+   0.00 (0.000%)    0.00 (0.000%)     LOOP  |  +-R00008 simpar-omp.c (262-271)
+  34.16 (73.42%)    0.00 ( 0.00%) PARALLEL  |-R00011 simpar-omp.c (339-349)
+  23.88 (51.32%)   23.88 (51.32%)     LOOP  |  |-R00003 simpar-omp.c (135-157)
+   6.92 (14.88%)    6.92 (14.88%)     LOOP  |  |-R00004 simpar-omp.c (203-212)
+   3.36 ( 7.21%)    3.36 ( 7.21%)     LOOP  |  +-R00005 simpar-omp.c (218-223)
+   0.39 ( 0.83%)    0.39 ( 0.83%)  PARLOOP  |-R00001 simpar-omp.c (60-66)
+   0.00 (0.000%)    0.00 (0.000%)  PARLOOP  +-R00002 simpar-omp.c (78-81)
+
+----------------------------------------------------------------------
+----     ompP Flat Region Profile (inclusive data)     ---------------
+----------------------------------------------------------------------
+R00010 simpar-omp.c (297-300) PARALLEL LOOP
+ TID      execT      execC      bodyT   exitBarT   startupT   shutdwnT      taskT
+   0       0.00          1       0.00       0.00       0.00       0.00       0.00
+   1       0.00          1       0.00       0.00       0.00       0.00       0.00
+ SUM       0.00          2       0.00       0.00       0.00       0.00       0.00
+
+R00009 simpar-omp.c (281-290) PARALLEL LOOP
+ TID      execT      execC      bodyT   exitBarT   startupT   shutdwnT      taskT
+   0       0.00          6       0.00       0.00       0.00       0.00       0.00
+   1       0.00          6       0.00       0.00       0.00       0.00       0.00
+ SUM       0.00         12       0.00       0.00       0.00       0.00       0.00
+
+R00006 simpar-omp.c (247-272) PARALLEL
+ TID      execT      execC      bodyT   exitBarT   startupT   shutdwnT      taskT
+   0      11.70          5      11.70       0.00       0.00       0.00       0.00
+   1      11.70          5      11.70       0.00       0.00       0.00       0.00
+ SUM      23.40         10      23.40       0.00       0.00       0.00       0.00
+
+R00007 simpar-omp.c (249-259) LOOP
+ TID      execT      execC      bodyT   exitBarT      taskT
+   0      11.70          5      11.24       0.46       0.00
+   1      11.70          5      11.26       0.45       0.00
+ SUM      23.40         10      22.49       0.91       0.00
+
+R00008 simpar-omp.c (262-271) LOOP
+ TID      execT      execC      bodyT   exitBarT      taskT
+   0       0.00          5       0.00       0.00       0.00
+   1       0.00          5       0.00       0.00       0.00
+ SUM       0.00         10       0.00       0.00       0.00
+
+R00011 simpar-omp.c (339-349) PARALLEL
+ TID      execT      execC      bodyT   exitBarT   startupT   shutdwnT      taskT
+   0      34.16          5      34.16       0.00       0.00       0.00       0.00
+   1      34.16          5      34.16       0.00       0.00       0.00       0.00
+ SUM      68.32         10      68.32       0.00       0.00       0.00       0.00
+
+R00003 simpar-omp.c (135-157) LOOP
+ TID      execT      execC      bodyT   exitBarT      taskT
+   0      23.88          5      23.01       0.87       0.00
+   1      23.88          5      23.53       0.35       0.00
+ SUM      47.76         10      46.54       1.22       0.00
+
+R00004 simpar-omp.c (203-212) LOOP
+ TID      execT      execC      bodyT   exitBarT      taskT
+   0       6.92          5       6.92       0.00       0.00
+   1       6.92          5       6.42       0.50       0.00
+ SUM      13.85         10      13.34       0.51       0.00
+
+R00005 simpar-omp.c (218-223) LOOP
+ TID      execT      execC      bodyT   exitBarT      taskT
+   0       3.36          5       2.72       0.63       0.00
+   1       3.36          5       3.27       0.09       0.00
+ SUM       6.71         10       5.99       0.72       0.00
+
+R00001 simpar-omp.c (60-66) PARALLEL LOOP
+ TID      execT      execC      bodyT   exitBarT   startupT   shutdwnT      taskT
+   0       0.39          1       0.37       0.02       0.00       0.00       0.00
+   1       0.39          1       0.39       0.00       0.00       0.00       0.00
+ SUM       0.77          2       0.75       0.02       0.00       0.00       0.00
+
+R00002 simpar-omp.c (78-81) PARALLEL LOOP
+ TID      execT      execC      bodyT   exitBarT   startupT   shutdwnT      taskT
+   0       0.00          1       0.00       0.00       0.00       0.00       0.00
+   1       0.00          1       0.00       0.00       0.00       0.00       0.00
+ SUM       0.00          2       0.00       0.00       0.00       0.00       0.00
+
+----------------------------------------------------------------------
+----     ompP Callgraph Region Profiles (incl./excl. data)     -------
+----------------------------------------------------------------------
+
+[*00] unknown
+[=01] R00010 simpar-omp.c (297-300) PARALLEL LOOP
+ TID      execT      execC    bodyT/I    bodyT/E   exitBarT   startupT   shutdwnT      taskT
+   0       0.00          1       0.00       0.00       0.00       0.00       0.00       0.00
+   1       0.00          1       0.00       0.00       0.00       0.00       0.00       0.00
+ SUM       0.00          2       0.00       0.00       0.00       0.00       0.00       0.00
+
+[*00] unknown
+[=01] R00009 simpar-omp.c (281-290) PARALLEL LOOP
+ TID      execT      execC    bodyT/I    bodyT/E   exitBarT   startupT   shutdwnT      taskT
+   0       0.00          6       0.00       0.00       0.00       0.00       0.00       0.00
+   1       0.00          6       0.00       0.00       0.00       0.00       0.00       0.00
+ SUM       0.00         12       0.00       0.00       0.00       0.00       0.00       0.00
+
+[*00] unknown
+[+01] R00006 simpar-omp.c (247-272) PARALLEL
+ TID      execT      execC    bodyT/I    bodyT/E   exitBarT   startupT   shutdwnT      taskT
+   0      11.70          5      11.70       0.00       0.00       0.00       0.00       0.00
+   1      11.70          5      11.70       0.00       0.00       0.00       0.00       0.00
+ SUM      23.40         10      23.40       0.00       0.00       0.00       0.00       0.00
+
+[*00] unknown
+[+01] R00006 simpar-omp.c (247-272) PARALLEL
+[=02] R00007 simpar-omp.c (249-259) LOOP
+ TID      execT      execC    bodyT/I    bodyT/E   exitBarT      taskT
+   0      11.70          5      11.24      11.24       0.46       0.00
+   1      11.70          5      11.26      11.26       0.45       0.00
+ SUM      23.40         10      22.49      22.49       0.91       0.00
+
+[*00] unknown
+[+01] R00006 simpar-omp.c (247-272) PARALLEL
+[=02] R00008 simpar-omp.c (262-271) LOOP
+ TID      execT      execC    bodyT/I    bodyT/E   exitBarT      taskT
+   0       0.00          5       0.00       0.00       0.00       0.00
+   1       0.00          5       0.00       0.00       0.00       0.00
+ SUM       0.00         10       0.00       0.00       0.00       0.00
+
+[*00] unknown
+[+01] R00011 simpar-omp.c (339-349) PARALLEL
+ TID      execT      execC    bodyT/I    bodyT/E   exitBarT   startupT   shutdwnT      taskT
+   0      34.16          5      34.16       0.00       0.00       0.00       0.00       0.00
+   1      34.16          5      34.16       0.00       0.00       0.00       0.00       0.00
+ SUM      68.32         10      68.32       0.00       0.00       0.00       0.00       0.00
+
+[*00] unknown
+[+01] R00011 simpar-omp.c (339-349) PARALLEL
+[=02] R00003 simpar-omp.c (135-157) LOOP
+ TID      execT      execC    bodyT/I    bodyT/E   exitBarT      taskT
+   0      23.88          5      23.01      23.01       0.87       0.00
+   1      23.88          5      23.53      23.53       0.35       0.00
+ SUM      47.76         10      46.54      46.54       1.22       0.00
+
+[*00] unknown
+[+01] R00011 simpar-omp.c (339-349) PARALLEL
+[=02] R00004 simpar-omp.c (203-212) LOOP
+ TID      execT      execC    bodyT/I    bodyT/E   exitBarT      taskT
+   0       6.92          5       6.92       6.92       0.00       0.00
+   1       6.92          5       6.42       6.42       0.50       0.00
+ SUM      13.85         10      13.34      13.34       0.51       0.00
+
+[*00] unknown
+[+01] R00011 simpar-omp.c (339-349) PARALLEL
+[=02] R00005 simpar-omp.c (218-223) LOOP
+ TID      execT      execC    bodyT/I    bodyT/E   exitBarT      taskT
+   0       3.36          5       2.72       2.72       0.63       0.00
+   1       3.36          5       3.27       3.27       0.09       0.00
+ SUM       6.71         10       5.99       5.99       0.72       0.00
+
+[*00] unknown
+[=01] R00001 simpar-omp.c (60-66) PARALLEL LOOP
+ TID      execT      execC    bodyT/I    bodyT/E   exitBarT   startupT   shutdwnT      taskT
+   0       0.39          1       0.37       0.37       0.02       0.00       0.00       0.00
+   1       0.39          1       0.39       0.39       0.00       0.00       0.00       0.00
+ SUM       0.77          2       0.75       0.75       0.02       0.00       0.00       0.00
+
+[*00] unknown
+[=01] R00002 simpar-omp.c (78-81) PARALLEL LOOP
+ TID      execT      execC    bodyT/I    bodyT/E   exitBarT   startupT   shutdwnT      taskT
+   0       0.00          1       0.00       0.00       0.00       0.00       0.00       0.00
+   1       0.00          1       0.00       0.00       0.00       0.00       0.00       0.00
+ SUM       0.00          2       0.00       0.00       0.00       0.00       0.00       0.00
+
+
+----------------------------------------------------------------------
+----     ompP Overhead Analysis Report     ---------------------------
+----------------------------------------------------------------------
+Total runtime (wallclock)   : 46.53 sec [2 threads]
+Number of parallel regions  : 6
+Parallel coverage           : 46.25 sec (99.40%)
+
+Parallel regions sorted by wallclock time:
+            Type                            Location      Wallclock (%) 
+R00011  PARALLEL              simpar-omp.c (339-349)      34.16 (73.42) 
+R00006  PARALLEL              simpar-omp.c (247-272)      11.70 (25.15) 
+R00001   PARLOOP                simpar-omp.c (60-66)       0.39 ( 0.83) 
+R00009   PARLOOP              simpar-omp.c (281-290)       0.00 ( 0.00) 
+R00010   PARLOOP              simpar-omp.c (297-300)       0.00 ( 0.00) 
+R00002   PARLOOP                simpar-omp.c (78-81)       0.00 ( 0.00) 
+                                                 SUM      46.25 (99.40) 
+
+Overheads wrt. each individual parallel region:
+          Total        Ovhds (%)  =   Synch  (%)  +  Imbal   (%)  +   Limpar (%)   +    Mgmt (%)
+R00011    68.32     2.45 ( 3.58)    0.00 ( 0.00)    2.45 ( 3.58)    0.00 ( 0.00)    0.00 ( 0.00)
+R00006    23.40     0.91 ( 3.89)    0.00 ( 0.00)    0.91 ( 3.89)    0.00 ( 0.00)    0.00 ( 0.00)
+R00001     0.77     0.02 ( 2.31)    0.00 ( 0.00)    0.02 ( 2.30)    0.00 ( 0.00)    0.00 ( 0.01)
+R00009     0.00     0.00 (91.58)    0.00 ( 0.00)    0.00 (28.87)    0.00 ( 0.00)    0.00 (62.71)
+R00010     0.00     0.00 (95.45)    0.00 ( 0.00)    0.00 ( 9.86)    0.00 ( 0.00)    0.00 (85.58)
+R00002     0.00     0.00 (81.95)    0.00 ( 0.00)    0.00 (24.19)    0.00 ( 0.00)    0.00 (57.76)
+
+Overheads wrt. whole program:
+          Total        Ovhds (%)  =   Synch  (%)  +  Imbal   (%)  +   Limpar (%)   +    Mgmt (%)
+R00011    68.32     2.45 ( 2.63)    0.00 ( 0.00)    2.45 ( 2.63)    0.00 ( 0.00)    0.00 ( 0.00)
+R00006    23.40     0.91 ( 0.98)    0.00 ( 0.00)    0.91 ( 0.98)    0.00 ( 0.00)    0.00 ( 0.00)
+R00001     0.77     0.02 ( 0.02)    0.00 ( 0.00)    0.02 ( 0.02)    0.00 ( 0.00)    0.00 ( 0.00)
+R00009     0.00     0.00 ( 0.00)    0.00 ( 0.00)    0.00 ( 0.00)    0.00 ( 0.00)    0.00 ( 0.00)
+R00010     0.00     0.00 ( 0.00)    0.00 ( 0.00)    0.00 ( 0.00)    0.00 ( 0.00)    0.00 ( 0.00)
+R00002     0.00     0.00 ( 0.00)    0.00 ( 0.00)    0.00 ( 0.00)    0.00 ( 0.00)    0.00 ( 0.00)
+   SUM    92.49     3.37 ( 3.63)    0.00 ( 0.00)    3.37 ( 3.62)    0.00 ( 0.00)    0.00 ( 0.00)
+
+

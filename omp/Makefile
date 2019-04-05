@@ -15,22 +15,19 @@
 # Parallel and Distributed Computation (2019)
 
 #							-std=gnu99  to allow c++ comments ("//")
-CFLAGS = -fopenmp -g -Wall -pedantic -std=gnu99
-CC = kinst-ompp gcc-8
+CFLAGS = -fopenmp -g -pedantic -std=gnu99
+CC = gcc-8
 
-all: clean simpar-omp
+all: clean simpar
 
-simpar-omp: simpar-omp.o init_particles.o
-	$(CC) $(CFLAGS) -o simpar-omp simpar-omp.o init_particles.o
+simpar: simpar.o init_particles.o
+	$(CC) $(CFLAGS) -o simpar simpar.o init_particles.o
 
-simpar-omp.o: simpar-omp.c simpar-omp.h init_particles.h
-	$(CC) $(CFLAGS) -c simpar-omp.c
+simpar.o: simpar.c simpar.h init_particles.h
+	$(CC) $(CFLAGS) -c simpar.c
 
 init_particles.o: init_particles.c init_particles.h
 	$(CC) $(CFLAGS) -c init_particles.c
 
-zip: clean
-	zip cpd_18.zip simpar-omp.c simpar-omp.h init_particles.c init_particles.h Makefile README.md
-
 clean:
-	rm -f *.o simpar-omp *.inc *.rc *.mod.c *.tab.c
+	rm -rf *.o simpar *.inc *.rc *.mod.c *.tab.c *.dSYM
