@@ -276,16 +276,16 @@ void calc_all_cells_cm(long ncside, cell_t **cells, long long n_part, particle_t
 void init_cells_matrix(long ncside, cell_t **cells) {
     // default value to 0
     int i, j;
-    cell_t cell;
 
+    cell_t *cell;
 #pragma omp parallel for private(cell, j)
     for (i = 0; i < ncside; i++) {
         for (j = 0; j < ncside; j++) {
-            cell = cells[i][j];
-            cell.x = 0;
-            cell.y = 0;
-            cell.m = 0;
-            cell.npar = 0;
+            cell = &cells[i][j];
+            cell->x = 0.0;
+            cell->y = 0.0;
+            cell->m = 0.0;
+            cell->npar = 0;
         }
     }
 }

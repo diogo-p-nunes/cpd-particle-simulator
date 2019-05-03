@@ -256,14 +256,14 @@ void calc_all_cells_cm(long ncside, cell_t **cells, long long n_part, particle_t
 void init_cells_matrix(long ncside, cell_t **cells) {
     // default value to 0
     int i, j;
-    cell_t cell;
+    cell_t *cell;
     for (i = 0; i < ncside; i++) {
         for (j = 0; j < ncside; j++) {
-            cell = cells[i][j];
-            cell.x = 0;
-            cell.y = 0;
-            cell.m = 0;
-            cell.npar = 0;
+            cell = &cells[i][j];
+            cell->x = 0.0;
+            cell->y = 0.0;
+            cell->m = 0.0;
+            cell->npar = 0;
         }
     }
 }
@@ -304,6 +304,9 @@ int main(int argc, char *argv[]) {
     cell_t **cells = malloc(ncside * sizeof(cell_t *));
     create_cells_matrix(ncside, cells);
     init_cells_matrix(ncside, cells);
+
+    print_particles(n_part, par);
+    print_cells(ncside, cells);
 
     int i;
     for (i = 0; i < n_tsteps; i++) {

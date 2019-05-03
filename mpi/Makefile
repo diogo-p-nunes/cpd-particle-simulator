@@ -15,19 +15,20 @@
 # Parallel and Distributed Computation (2019)
 
 #							-std=gnu99  to allow c++ comments ("//")
-CFLAGS = -fopenmp -g -pedantic -std=gnu99
-CC = gcc-8
 
-all: clean simpar-omp
+CFLAGS = -g -Wall -pedantic -std=gnu99
+CC = mpicc
 
-simpar-omp: simpar-omp.o init_particles.o
-	$(CC) $(CFLAGS) -o simpar-omp simpar-omp.o init_particles.o -lm
+all: clean simpar-mpi
 
-simpar-omp.o: simpar-omp.c simpar-omp.h init_particles.h
-	$(CC) $(CFLAGS) -c simpar-omp.c
+simpar-mpi: simpar-mpi.o init_particles.o
+	$(CC) $(CFLAGS) -o simpar-mpi simpar-mpi.o init_particles.o -lm
+
+simpar-mpi.o: simpar-mpi.c simpar-mpi.h init_particles.h
+	$(CC) $(CFLAGS) -c simpar-mpi.c
 
 init_particles.o: init_particles.c init_particles.h
 	$(CC) $(CFLAGS) -c init_particles.c
 
 clean:
-	rm -rf *.o simpar-omp *.inc *.rc *.mod.c *.tab.c *.dSYM
+	rm -f *.o simpar *.dSYM
