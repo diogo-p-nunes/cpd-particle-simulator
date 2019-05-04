@@ -16,7 +16,7 @@
 
 #							-std=gnu99  to allow c++ comments ("//")
 
-CFLAGS = -g -Wall -pedantic -std=gnu99
+CFLAGS = -g -std=gnu99
 CC = mpicc
 
 all: clean simpar-mpi

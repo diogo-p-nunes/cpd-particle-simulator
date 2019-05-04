@@ -20,8 +20,7 @@
 #define EPSLON 0.0005
 
 typedef struct particle_t {
-    double x, y, vx, vy, m;
-    double fx, fy;
+    double x, y, vx, vy, m, fx, fy;
     struct particle_t *next;
 } particle_t;
 

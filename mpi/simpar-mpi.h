@@ -35,6 +35,8 @@ void print_particles(particle_t *par);
 
 void print_cells(long ncside, cell_t **cells);
 
+void print_column(int id, long ncside, cell_t *column);
+
 void calc_and_print_overall_cm(long long n_part, particle_t *par);
 
 void free_memory(int ncside, cell_t **cells, particle_t *par);
