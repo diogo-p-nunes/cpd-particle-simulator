@@ -28,11 +28,6 @@ typedef struct {
 
 } cell_t;
 
-void print_particles(particle_t *par);
-
-void print_cells(long ncside, cell_t **cells);
-
-void print_column(int id, long ncside, cell_t *column);
 
 void calc_and_print_overall_cm(long long n_part, particle_t *par);
 
@@ -58,6 +53,5 @@ void create_cells_matrix(long ncside, cell_t **cells);
 
 void init_particle_force(particle_t *par, long long n_part);
 
-void add_particle_to_cell_linked_list(cell_t *cell, particle_t *par);
 
 #endif
