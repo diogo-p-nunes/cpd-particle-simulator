@@ -26,9 +26,6 @@ typedef struct {
     double x, y, m;
     long npar;
 
-    // pointer to the linked list of particles in this cell
-    particle_t *par;
-
 } cell_t;
 
 void print_particles(particle_t *par);

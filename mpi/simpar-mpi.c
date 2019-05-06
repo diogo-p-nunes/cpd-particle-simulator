@@ -18,56 +18,35 @@
 #include <mpi.h>
 #include <stddef.h>
 
+
 #define euclidean(x1,x2,y1,y2)       ((sqrt((x1 - x2)*(x1 - x2) + (y1 - y2)*(y1 - y2))))
 #define wrap_around(index, min, max) (index < min ? max : (index > max ) ? min : index)
 
-/**********
- * HELPERS
- **********/
 
-void print_particles(particle_t *par) {
-    /*
-     *  Helper function to visualize each particle's position and mass
-     *  print = (x, y) - m
-     * */
-    printf("[Particles]\n");
-    if(par == NULL) {
-        printf("\t-\n");
+
+void get_processor_c(int id, int dim, int size, long ncside, int *c) {
+    int coord = id % dim;
+    int cmin = coord * size;
+    int cmax;
+
+    if(coord == dim-1) {
+        cmax = ncside-1;
     }
     else {
-        while(par->next != NULL) {
-            printf("\tp=(%.2f, %.2f) | f=(%.2f, %.2f)\n", par->x, par->y, par->fx, par->fy);
-            par = par->next;
-        }
-        printf("\tp=(%.2f, %.2f) | f=(%.2f, %.2f)\n", par->x, par->y, par->fx, par->fy);
+        cmax = (coord+1) * size -1;
     }
+    c[0] = cmin; c[1] = cmax;
 }
 
-void print_cells(long ncside, cell_t **cells) {
-    /*
-     *  Helper function to visualize each cells's position and mass
-     *  print = (x, y) - m
-     * */
-    int i, j;
-    for (i = 0; i < ncside; i++) {
-        for (j = 0; j < ncside; j++) {
-            printf("\n[Cell (x=%d, y=%d)]  ", i, j);
-            printf("(%.2f, %.2f) - %.2f, %ld\n", cells[i][j].x, cells[i][j].y, cells[i][j].m, cells[i][j].npar);
-            print_particles(cells[i][j].par);
-        }
+
+void init_processors_particles(particle_t **arr, int p) {
+    int i=0;
+    for(i; i<p; i++) {
+        arr[i] = NULL;
     }
 }
 
 
-void print_column(int id, long ncside, cell_t *column) {
-    printf("==== Particles received by process %d ========\n", id);
-    int j;
-    for (j = 0; j < ncside; j++) {
-        printf("\n[Cell (x=%d, y=%d)]  ", id, j);
-        printf("(%.2f, %.2f) - %.2f, %ld\n", column[j].x, column[j].y, column[j].m, column[j].npar);
-        print_particles(column[j].par);
-    }
-}
 
 
 /*****************
@@ -90,7 +69,6 @@ void init_cells_matrix(long ncside, cell_t **cells) {
             cell->y = 0.0;
             cell->m = 0.0;
             cell->npar = 0;
-            cell->par = NULL;
         }
     }
 }
@@ -103,32 +81,8 @@ void create_cells_matrix(long ncside, cell_t **cells) {
     }
 }
 
-void allocate_particles_to_cells(long ncside, long long n_part, cell_t **cells, particle_t *par) {
-    // go through all particles and allocate each to the cell
-    // it belongs to
-    long long k;
-    int cx, cy;
-    double interval = 1.0 / ncside;
 
-    for (k = 0; k < n_part; k++) {
-        cx = calc_cell_number(par[k].x, interval, ncside);
-        cy = calc_cell_number(par[k].y, interval, ncside);
-        add_particle_to_cell_linked_list(&cells[cx][cy], &par[k]);
-    }
-}
-
-void add_particle_to_cell_linked_list(cell_t *cell, particle_t *par) {
-    /*
-     * Add new particle to the beginning of
-     * the linked list of particles of the given cell
-     */
-
-    particle_t *head = cell->par;
-    cell->par = par;
-    par->next = head;
-}
-
-
+/*
 void build_mpi_cell_type(cell_t *cell, MPI_Datatype *mpi_cell_type, MPI_Datatype *mpi_particle_type) {
 
     // Create a MPI type for struct cell_t
@@ -211,7 +165,7 @@ void build_mpi_particle_type(particle_t *par, MPI_Datatype *mpi_particle_type) {
     // Commit it so that it can be used
     MPI_Type_commit(mpi_particle_type);
 }
-
+*/
 
 /*******
  * MAIN
@@ -219,7 +173,7 @@ void build_mpi_particle_type(particle_t *par, MPI_Datatype *mpi_particle_type) {
 
 int main(int argc, char *argv[]) {
 
-    int id = 0, p;
+    int id, p;
     MPI_Init(&argc, &argv);
 
     MPI_Comm_rank(MPI_COMM_WORLD, &id);
@@ -235,60 +189,69 @@ int main(int argc, char *argv[]) {
     particle_t *par;
     cell_t **cells;
 
-    // information regarding the specific processor column
-    cell_t *column; // receiving variable from the scatter func
-    int cols_per_proc = ncside / p;
-
     /*
      * First we have to initiate all particles in non-parallel
      * mode so that we have the same base to start with. Only process 0 will do this.
      * We then have to distribute these particles among the other processes.
      */
+
+    // Get best dimensions
+    int dims[2] = {0,0};
+
+    // x = dims[0], y = dims[1]
+    MPI_Dims_create(p, 2, dims);
+
+    // x = sizes[0], y = sizes[1]
+    int sizes[2] = {floor(ncside/dims[0]), floor(ncside/dims[1])};
+
     if(id == 0) {
-        printf("==== Particles init allocation by process 0 ========\n");
         // init particles locally
         par = malloc(n_part * sizeof(particle_t));
         init_particles(nseed, ncside, n_part, par);
 
-        // init cell matrix locally
-        cells = malloc(ncside * sizeof(cell_t *));
-        create_cells_matrix(ncside, cells);
-        init_cells_matrix(ncside, cells);
-        allocate_particles_to_cells(ncside, n_part, cells, par);
+        // generate data to send to each processor
+        particle_t **processors_particles = (particle_t**) malloc(p * sizeof(particle_t*));
+        init_processors_particles(processors_particles, p);
 
-        print_cells(ncside, cells);
+        for(int j=0, j<n_part; j++) {
+            int cellx, celly;
+            cellx = calc_cell_number(par[i].x, interval, ncside);
+            celly = calc_cell_number(par[i].y, interval, ncside);
+        }
+
+        // distribute particles across all processors
+        for(int k=1; k<p; k++){
+            int *cx, *cy;
+            cx = (int*) malloc(2*sizeof(int));
+            cy = (int*) malloc(2*sizeof(int));
+
+            get_processor_c(k, dims[0], sizes[0], ncside, cx);
+            get_processor_c(k, dims[1], sizes[1], ncside, cy);
+            printf("id:%d, cx=[%d,%d], cy=[%d,%d]\n", k, cx[0], cx[1], cy[0], cy[1]);
+            fflush(stdout);
+        }
     }
 
     // All processes must wait until process 0 has finished initializing the system
     MPI_Barrier(MPI_COMM_WORLD);
 
-
-
-    // TODO: A partir deste ponto para cima esta tudo a funcionar corretamente. Para baixo da SEG FAULT
-    /* From here on the computation is done identically at each process.
-     * First we have to distribute the particles (that only process 0 contains,
-     * across the network.
-     * Only then can each process start the computation.
+    /*
+     * From here on the computation is done identically at each process.
      */
 
     // TODO: Acho que nao da para nativamente enviar estruturas no MPI, portanto temos de definir
     // TODO: nos mesmos as estruturas. Eu tentei desta forma, mas estou a fazer umas ciganices que dao
     // TODO: SEGMENTATION FAULT
     // build MPI data types for transfer
+
+    /*
     MPI_Datatype mpi_particle_type;
     build_mpi_particle_type(&par[0], &mpi_particle_type);
 
     MPI_Datatype mpi_cell_type;
     build_mpi_cell_type(&cells[0][0], &mpi_cell_type, &mpi_particle_type);
 
-    // TODO: MPI_Scatter apenas funciona quando a divisao de colunas por celulas e inteira!
-    // TODO: Temos de alterar para MPI_Scatterv no futuro, mas primeiro por a funcionar este
-    MPI_Scatter(cells, cols_per_proc, mpi_cell_type, column, cols_per_proc, mpi_cell_type, 0, MPI_COMM_WORLD);
-    print_column(id, ncside, column);
-
-
-
-
+     */
 
     MPI_Finalize();
     return EXIT_SUCCESS;

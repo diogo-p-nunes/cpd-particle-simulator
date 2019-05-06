@@ -25,6 +25,5 @@ void init_particles(long seed, long ncside, long long n_part, particle_t *par) {
         par[i].m = RND0_1 * ncside / (G * 1e6 * n_part);
         par[i].fx = 0.0; // added gravitational force
         par[i].fy = 0.0; // added gravitational force
-        par[i].next = NULL; // added linked list pointer
     }
 }

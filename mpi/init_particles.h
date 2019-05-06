@@ -21,7 +21,6 @@
 
 typedef struct particle_t {
     double x, y, vx, vy, m, fx, fy;
-    struct particle_t *next;
 } particle_t;
 
 void init_particles(long seed, long ncside, long long n_part, particle_t *par);
