@@ -18,11 +18,48 @@
 #include <mpi.h>
 #include <stddef.h>
 
-
 #define euclidean(x1,x2,y1,y2)       ((sqrt((x1 - x2)*(x1 - x2) + (y1 - y2)*(y1 - y2))))
 #define wrap_around(index, min, max) (index < min ? max : (index > max ) ? min : index)
 
 
+/*********
+ * HELPERS
+ *********/
+
+void print_id_map(int **id_map,long ncside) {
+    for(int i=0; i<ncside; i++) {
+        for(int j=0; j<ncside; j++) {
+            printf("[%d,%d] -> %d\n", i,j, id_map[i][j]);
+            fflush(stdout);
+        }
+    }
+}
+
+
+void print_processors_particles(particle_t **processors_particles, int *processors_particles_sizes, int p) {
+    for(int i=0; i<p; i++) {
+        printf("id:%d - ", i);
+        fflush(stdout);
+        particle_t *array = processors_particles[i];
+
+        for(int j=0; j<processors_particles_sizes[i]; j++) {
+            print_particle(&array[j]);
+        }
+        printf("\n");
+    }
+}
+
+
+void print_particle(particle_t *par) {
+    printf("(%.2f,%.2f) ", par->x, par->y);
+    fflush(stdout);
+}
+
+
+
+/**************************
+ * DATA GENERATION/DISTRIB
+ **************************/
 
 void get_processor_c(int id, int dim, int size, long ncside, int *c) {
     int coord = id % dim, cmin = coord * size, cmax;
@@ -32,8 +69,7 @@ void get_processor_c(int id, int dim, int size, long ncside, int *c) {
     c[0] = cmin; c[1] = cmax;
 }
 
-
-void init_processors_particles(particle_t ***arr, int *processors_particles_sizes, int p) {
+void init_processors_particles(particle_t **arr, int *processors_particles_sizes, int p) {
     int i=0;
     for(i; i<p; i++) {
         arr[i] = NULL;
@@ -41,7 +77,7 @@ void init_processors_particles(particle_t ***arr, int *processors_particles_size
     }
 }
 
-void generate_sending_data(long long n_part, particle_t* par, long ncside, particle_t ***processors_particles,
+void generate_sending_data(long long n_part, particle_t* par, long ncside, particle_t **processors_particles,
         int **id_map, int* processors_particles_sizes) {
 
     // go through each particle and determine to which processor it belongs to
@@ -58,25 +94,20 @@ void generate_sending_data(long long n_part, particle_t* par, long ncside, parti
     }
 }
 
-void add_particle_to_processor_array(particle_t ***array, particle_t *par, int id, int* processors_particles_sizes) {
+void add_particle_to_processor_array(particle_t **array, particle_t *par, int id, int* processors_particles_sizes) {
 
     if(processors_particles_sizes[id] == 0) {
-        (*array) = (particle_t**) malloc(sizeof(particle_t*));
-        (*array)[processors_particles_sizes[id]] = par;
+        (*array) = (particle_t*) malloc(sizeof(particle_t));
+        (*array)[processors_particles_sizes[id]] = (*par);
 
         processors_particles_sizes[id] += 1;
     }
     else {
-        (*array) = (particle_t**) realloc((*array), (processors_particles_sizes[id]+1) * sizeof(particle_t*));
-        (*array)[processors_particles_sizes[id]] = par;
+        (*array) = (particle_t*) realloc((*array), (processors_particles_sizes[id]+1) * sizeof(particle_t));
+        (*array)[processors_particles_sizes[id]] = (*par);
 
         processors_particles_sizes[id] += 1;
     }
-
-}
-
-
-void distribute_processors_particles(particle_t ***processors_particles, int dims[], int sizes[], long ncside) {
 
 }
 
@@ -96,7 +127,6 @@ void populate_id_map(int **id_map, int dims[], int sizes[], long ncside, int p) 
 
         get_processor_c(k, dims[0], sizes[0], ncside, cx);
         get_processor_c(k, dims[1], sizes[1], ncside, cy);
-        //printf("id:%d, cx=[%d,%d], cy=[%d,%d]\n", k, cx[0], cx[1], cy[0], cy[1]);
 
         for(int i=cx[0]; i<=cx[1]; i++) {
             for(int j=cy[0]; j<=cy[1]; j++) {
@@ -104,36 +134,6 @@ void populate_id_map(int **id_map, int dims[], int sizes[], long ncside, int p) 
             }
         }
     }
-}
-
-
-void print_id_map(int **id_map,long ncside) {
-    for(int i=0; i<ncside; i++) {
-        for(int j=0; j<ncside; j++) {
-            printf("[%d,%d] -> %d\n", i,j, id_map[i][j]);
-            fflush(stdout);
-        }
-    }
-}
-
-
-void print_processors_particles(particle_t ***processors_particles, int *processors_particles_sizes, int p) {
-    for(int i=0; i<p; i++) {
-        printf("id:%d - ", i);
-        fflush(stdout);
-        particle_t **array = processors_particles[i];
-
-        for(int j=0; j<processors_particles_sizes[i]; j++) {
-            print_particle(array[j]);
-        }
-        printf("\n");
-    }
-}
-
-
-void print_particle(particle_t *par) {
-    printf("(%.2f,%.2f) ", par->x, par->y);
-    fflush(stdout);
 }
 
 
@@ -170,62 +170,24 @@ void create_cells_matrix(long ncside, cell_t **cells) {
 }
 
 
-/*
-void build_mpi_cell_type(cell_t *cell, MPI_Datatype *mpi_cell_type, MPI_Datatype *mpi_particle_type) {
+void build_mpi_particle_type(MPI_Datatype *mpi_particle_type) {
 
-    // Create a MPI type for struct cell_t
-    // Build a derived datatype consisting of three doubles, a long and one mpi_particle_type
-    const int nitems=5;
-
-    // Specify the number of elements of each type
-    int blocklengths[5] = {1,1,1,1,1};
-
-    // First specify the types
-    MPI_Datatype types[5] = {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE,
-                             MPI_LONG, (*mpi_particle_type)};
-
-    MPI_Aint displacements[5];
-    MPI_Aint addresses[6];
-
-    // Calculate the displacements of the members relative to cell
-    MPI_Get_address(cell, &addresses[0]);
-    MPI_Get_address(&(cell->x), &addresses[1]);
-    MPI_Get_address(&(cell->y), &addresses[2]);
-    MPI_Get_address(&(cell->m), &addresses[3]);
-    MPI_Get_address(&(cell->npar), &addresses[4]);
-    MPI_Get_address(&(cell->par), &addresses[5]);
-
-    displacements[0] = addresses[1] - addresses[0];
-    displacements[1] = addresses[2] - addresses[0];
-    displacements[2] = addresses[3] - addresses[0];
-    displacements[3] = addresses[4] - addresses[0];
-    displacements[4] = addresses[5] - addresses[0];
-
-    // Create the derived type
-    MPI_Type_create_struct(nitems, blocklengths, displacements, types, mpi_cell_type);
-
-    // Commit it so that it can be used
-    MPI_Type_commit(mpi_cell_type);
-}
-
-
-void build_mpi_particle_type(particle_t *par, MPI_Datatype *mpi_particle_type) {
+    // Data type we want to duplicate into MPI
+    particle_t *par;
 
     // Create a MPI type for struct particle_t
     // Build a derived datatype consisting of three doubles, a long and one mpi_particle_type
-    const int nitems=8;
+    const int nitems=7;
 
     // Specify the number of elements of each type
-    int blocklengths[8] = {1,1,1,1,1,1,1,1};
+    int blocklengths[7] = {1,1,1,1,1,1,1};
 
-    // TODO: E aqui que esta a ciganice. Estou a definir um tipo novo baseado nele mesmo.
-    // TODO: Nao sei como dar a volta a isto, se calhar esta mal a forma de pensar.
     // First specify the types
-    MPI_Datatype types[8] = {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE,
-                             MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, (*mpi_particle_type)};
+    MPI_Datatype types[7] = {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE,
+                             MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE,};
 
-    MPI_Aint displacements[8];
-    MPI_Aint addresses[9];
+    MPI_Aint displacements[7];
+    MPI_Aint addresses[8];
 
     // Calculate the displacements of the members relative to cell
     MPI_Get_address(par, &addresses[0]);
@@ -236,7 +198,6 @@ void build_mpi_particle_type(particle_t *par, MPI_Datatype *mpi_particle_type) {
     MPI_Get_address(&(par->m), &addresses[5]);
     MPI_Get_address(&(par->fx), &addresses[6]);
     MPI_Get_address(&(par->fy), &addresses[7]);
-    MPI_Get_address(&(par->next), &addresses[8]);
 
     displacements[0] = addresses[1] - addresses[0];
     displacements[1] = addresses[2] - addresses[0];
@@ -245,7 +206,6 @@ void build_mpi_particle_type(particle_t *par, MPI_Datatype *mpi_particle_type) {
     displacements[4] = addresses[5] - addresses[0];
     displacements[5] = addresses[6] - addresses[0];
     displacements[6] = addresses[7] - addresses[0];
-    displacements[7] = addresses[8] - addresses[0];
 
     // Create the derived type
     MPI_Type_create_struct(nitems, blocklengths, displacements, types, mpi_particle_type);
@@ -253,7 +213,7 @@ void build_mpi_particle_type(particle_t *par, MPI_Datatype *mpi_particle_type) {
     // Commit it so that it can be used
     MPI_Type_commit(mpi_particle_type);
 }
-*/
+
 
 /*******
  * MAIN
@@ -273,9 +233,8 @@ int main(int argc, char *argv[]) {
     long long n_part = strtol(argv[3], NULL, 10);
     long n_tsteps = strtol(argv[4], NULL, 10);
 
-    // information regarding the whole system
+    // information regarding the problem
     particle_t *par;
-    cell_t **cells;
 
     /*
      * First we have to initiate all particles in non-parallel
@@ -292,10 +251,21 @@ int main(int argc, char *argv[]) {
     // x = sizes[0], y = sizes[1]
     int sizes[2] = {floor(ncside/dims[0]), floor(ncside/dims[1])};
 
-    // Define the processor id for the coordinates
+    // Define the mapping of processor id for processor coordinates
     int **id_map = (int**) malloc(sizeof(int*)*ncside);
     init_id_map(id_map, ncside);
     populate_id_map(id_map, dims, sizes, ncside, p);
+
+    // Define the number of particles for each processor (local)
+    int num_par = 0;
+
+    // Define data sending TAGS for validation: IMPORTANT
+    int NUM_PAR_TAG = 0;
+    int PAR_TAG = 1;
+
+    // build MPI data types for transfer
+    MPI_Datatype mpi_particle_type;
+    build_mpi_particle_type(&mpi_particle_type);
 
     if(id == 0) {
 
@@ -304,9 +274,9 @@ int main(int argc, char *argv[]) {
         init_particles(nseed, ncside, n_part, par);
 
         // init array with particles that belong to each processor id
-        particle_t ***processors_particles = (particle_t***) malloc(p * sizeof(particle_t**));
+        particle_t **processors_particles = (particle_t**) malloc(p * sizeof(particle_t*));
 
-        // keep in memory the number of particles in each processor id array above
+        // keep in memory the number of particles in each processor id particle array
         int *processors_particles_sizes = (int*) malloc(p * sizeof(int));
 
         // in initialize array and sizes side array
@@ -315,32 +285,52 @@ int main(int argc, char *argv[]) {
         // populate the processors particles array with the corresponding data of each processor
         generate_sending_data(n_part, par, ncside, processors_particles, id_map, processors_particles_sizes);
 
-        print_processors_particles(processors_particles, processors_particles_sizes, p);
+        //print_processors_particles(processors_particles, processors_particles_sizes, p);
 
-        // distribute particles across all processors
-        //distribute_processors_particles(processors_particles, dims, sizes, ncside);
+        // Distribute particles across all processors
+        for(int k=1; k<p; k++) {
+            // First each process needs to know how many particles it is going to receive in the array
+            MPI_Send(&processors_particles_sizes[k], 1, MPI_INT, k, NUM_PAR_TAG, MPI_COMM_WORLD);
+
+            // Now we can send the particles to the processors
+            MPI_Send(processors_particles[k], processors_particles_sizes[k], mpi_particle_type, k, PAR_TAG, MPI_COMM_WORLD);
+        }
+
+        // Now processor id=0 can set its own particles (no longer knows about all particles)
+        num_par = processors_particles_sizes[0];
+        par = processors_particles[0];
+
+    }
+    else {
+
+        // Receive respective particles from processor id=0 who initialized the system
+        // First each process needs to know how many particles it is going to receive in the array
+        MPI_Recv(&num_par, 1, MPI_INT, 0, NUM_PAR_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+        // allocate memory for incoming number of particles
+        par = (particle_t*) malloc(num_par * sizeof(particle_t));
+
+        // all other processors receive the distributed data, respectively
+        MPI_Recv(par, num_par, mpi_particle_type, 0, PAR_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     }
 
-    // All processes must wait until process 0 has finished initializing the system
-    MPI_Barrier(MPI_COMM_WORLD);
+    // print processor received particles
+    printf("id:%d - num_par=%d\n", id, num_par);
+    for(int i=0; i<num_par; i++) {
+        printf("id:%d (%.2f, %.2f)\n", id, par[i].x, par[i].y);
+    }
+
+
 
     /*
      * From here on the computation is done identically at each process.
      */
+    cell_t **cells;
 
-    // TODO: Acho que nao da para nativamente enviar estruturas no MPI, portanto temos de definir
-    // TODO: nos mesmos as estruturas. Eu tentei desta forma, mas estou a fazer umas ciganices que dao
-    // TODO: SEGMENTATION FAULT
-    // build MPI data types for transfer
 
-    /*
-    MPI_Datatype mpi_particle_type;
-    build_mpi_particle_type(&par[0], &mpi_particle_type);
 
-    MPI_Datatype mpi_cell_type;
-    build_mpi_cell_type(&cells[0][0], &mpi_cell_type, &mpi_particle_type);
 
-     */
+
 
     MPI_Finalize();
     return EXIT_SUCCESS;

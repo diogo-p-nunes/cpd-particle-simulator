@@ -57,14 +57,14 @@ void init_particle_force(particle_t *par, long long n_part);
 
 void get_processor_c(int id, int dim, int size, long ncside, int *c);
 
-void init_processors_particles(particle_t ***arr, int *processors_particles_size, int p);
+void init_processors_particles(particle_t **arr, int *processors_particles_size, int p);
 
-void generate_sending_data(long long n_part, particle_t* par, long ncside, particle_t ***processors_particles,
+void generate_sending_data(long long n_part, particle_t* par, long ncside, particle_t **processors_particles,
         int **id_map, int* processors_particles_sizes);
 
-void add_particle_to_processor_array(particle_t ***array, particle_t *par, int id, int* processors_particles_sizes);
+void add_particle_to_processor_array(particle_t **array, particle_t *par, int id, int* processors_particles_sizes);
 
-void distribute_processors_particles(particle_t ***processors_particles, int dims[], int sizes[], long ncside);
+void distribute_processors_particles(particle_t **processors_particles, int* processors_particles_sizes, int p);
 
 void init_id_map(int **id_map, long ncside);
 
@@ -72,7 +72,7 @@ void populate_id_map(int **id_map, int dims[], int sizes[], long ncside, int p);
 
 void print_id_map(int **id_map,long ncside);
 
-void print_processors_particles(particle_t ***processors_particles, int *processors_particles_sizes, int p);
+void print_processors_particles(particle_t **processors_particles, int *processors_particles_sizes, int p);
 
 void print_particle(particle_t *par);
 
