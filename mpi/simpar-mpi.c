@@ -33,14 +33,17 @@ void get_processor_c(int id, int dim, int size, long ncside, int *c) {
 }
 
 
-void init_processors_particles(particle_t **arr, int p) {
+void init_processors_particles(particle_t ***arr, int *processors_particles_sizes, int p) {
     int i=0;
     for(i; i<p; i++) {
         arr[i] = NULL;
+        processors_particles_sizes[i] = 0;
     }
 }
 
-void generate_sending_data(long long n_part, particle_t* par, long ncside, particle_t **processors_particles, int **id_map) {
+void generate_sending_data(long long n_part, particle_t* par, long ncside, particle_t ***processors_particles,
+        int **id_map, int* processors_particles_sizes) {
+
     // go through each particle and determine to which processor it belongs to
     // add that particle to the dynamic array of particles of that processor
 
@@ -51,23 +54,29 @@ void generate_sending_data(long long n_part, particle_t* par, long ncside, parti
         cellx = calc_cell_number(par[i].x, interval, ncside);
         celly = calc_cell_number(par[i].y, interval, ncside);
         id = id_map[cellx][celly];
-        add_particle_to_processor_array(processors_particles[id], &par[i]);
+        add_particle_to_processor_array(&processors_particles[id], &par[i], id, processors_particles_sizes);
     }
 }
 
-void add_particle_to_processor_array(particle_t **array, particle_t *par) {
-    if(array == NULL) {
-        array = (particle_t**) malloc(sizeof(particle_t*));
-        array[0] = par;
+void add_particle_to_processor_array(particle_t ***array, particle_t *par, int id, int* processors_particles_sizes) {
+
+    if(processors_particles_sizes[id] == 0) {
+        (*array) = (particle_t**) malloc(sizeof(particle_t*));
+        (*array)[processors_particles_sizes[id]] = par;
+
+        processors_particles_sizes[id] += 1;
     }
     else {
-        array = (particle_t**) realloc(array, sizeof(particle_t*));
-        //TODO: we need to know the last position of the dynamically sized array, for each id entry
+        (*array) = (particle_t**) realloc((*array), (processors_particles_sizes[id]+1) * sizeof(particle_t*));
+        (*array)[processors_particles_sizes[id]] = par;
+
+        processors_particles_sizes[id] += 1;
     }
+
 }
 
 
-void distribute_processors_particles(particle_t **processors_particles, int dims[], int sizes[], long ncside) {
+void distribute_processors_particles(particle_t ***processors_particles, int dims[], int sizes[], long ncside) {
 
 }
 
@@ -106,6 +115,27 @@ void print_id_map(int **id_map,long ncside) {
         }
     }
 }
+
+
+void print_processors_particles(particle_t ***processors_particles, int *processors_particles_sizes, int p) {
+    for(int i=0; i<p; i++) {
+        printf("id:%d - ", i);
+        fflush(stdout);
+        particle_t **array = processors_particles[i];
+
+        for(int j=0; j<processors_particles_sizes[i]; j++) {
+            print_particle(array[j]);
+        }
+        printf("\n");
+    }
+}
+
+
+void print_particle(particle_t *par) {
+    printf("(%.2f,%.2f) ", par->x, par->y);
+    fflush(stdout);
+}
+
 
 /*****************
  * CELL FUNCTIONS
@@ -273,13 +303,22 @@ int main(int argc, char *argv[]) {
         par = malloc(n_part * sizeof(particle_t));
         init_particles(nseed, ncside, n_part, par);
 
-        // generate data to send to each processor
+        // init array with particles that belong to each processor id
         particle_t ***processors_particles = (particle_t***) malloc(p * sizeof(particle_t**));
-        init_processors_particles(processors_particles, p);
-        generate_sending_data(n_part, par, ncside, processors_particles, id_map);
+
+        // keep in memory the number of particles in each processor id array above
+        int *processors_particles_sizes = (int*) malloc(p * sizeof(int));
+
+        // in initialize array and sizes side array
+        init_processors_particles(processors_particles, processors_particles_sizes, p);
+
+        // populate the processors particles array with the corresponding data of each processor
+        generate_sending_data(n_part, par, ncside, processors_particles, id_map, processors_particles_sizes);
+
+        print_processors_particles(processors_particles, processors_particles_sizes, p);
 
         // distribute particles across all processors
-        distribute_processors_particles(processors_particles, dims, sizes, ncside);
+        //distribute_processors_particles(processors_particles, dims, sizes, ncside);
     }
 
     // All processes must wait until process 0 has finished initializing the system
