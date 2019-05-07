@@ -145,13 +145,12 @@ int calc_cell_number(double pos, double interval, long ncside) {
     return labs(((int) floor(pos / interval)) % ncside);
 }
 
-void init_cells_matrix(long ncside, cell_t **cells) {
-    // default value to 0
+void init_cells_matrix(int cols, int rows, cell_t **cells) {
     int i, j;
     cell_t *cell;
 
-    for (i = 0; i < ncside; i++) {
-        for (j = 0; j < ncside; j++) {
+    for (i = 0; i < cols; i++) {
+        for (j = 0; j < rows; j++) {
             cell = &cells[i][j];
             cell->x = 0.0;
             cell->y = 0.0;
@@ -161,11 +160,11 @@ void init_cells_matrix(long ncside, cell_t **cells) {
     }
 }
 
-void create_cells_matrix(long ncside, cell_t **cells) {
+void create_cells_matrix(int cols, int rows, cell_t **cells) {
     // access cell (x, y) => cells[x][y]
     int i;
-    for (i = 0; i < ncside; i++) {
-        cells[i] = malloc(ncside * sizeof(cell_t));
+    for (i = 0; i < cols; i++) {
+        cells[i] = malloc(rows * sizeof(cell_t));
     }
 }
 
@@ -325,11 +324,44 @@ int main(int argc, char *argv[]) {
     /*
      * From here on the computation is done identically at each process.
      */
+
+    // cells that this processor is dealing with
+    int *cx, *cy;
+    cx = (int*) malloc(2*sizeof(int));
+    cy = (int*) malloc(2*sizeof(int));
+    get_processor_c(id, dims[0], sizes[0], ncside, cx);
+    get_processor_c(id, dims[1], sizes[1], ncside, cy);
+
+    int cols = cx[1] - cx[0] +1;
+    int rows = cy[1] - cy[0] +1;
+
+    // init cells matrix
     cell_t **cells;
+    cells = (cell_t**) malloc(cols * sizeof(cell_t*));
+    create_cells_matrix(cols, rows, cells);
+    init_cells_matrix(cols, rows, cells);
 
 
+    int i;
+    for (i = 0; i < n_tsteps; i++) {
+
+        // determine center of mass of all cells
 
 
+        // compute the gravitational force applied to each particle
+
+
+        // print_particles(n_part, par);
+
+
+        // determine if any particle has moved to another processors designated cells
+        // if yes, send it
+
+
+        // init cells and particles aplied forces for next timestep
+
+
+    }
 
 
     MPI_Finalize();

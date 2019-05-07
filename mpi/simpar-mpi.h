@@ -46,9 +46,9 @@ int calc_cell_number(double pos, double interval, long ncside);
 
 void calc_all_cells_cm(long ncside, cell_t **cells, long long n_part, particle_t *par);
 
-void init_cells_matrix(long ncside, cell_t **cells);
+void init_cells_matrix(int cols, int rows, cell_t **cells);
 
-void create_cells_matrix(long ncside, cell_t **cells);
+void create_cells_matrix(int cols, int rows, cell_t **cells);
 
 void init_particle_force(particle_t *par, long long n_part);
 
