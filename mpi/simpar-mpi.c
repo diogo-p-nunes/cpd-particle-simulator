@@ -22,24 +22,13 @@
 #define wrap_around(index, min, max) (index < min ? max : (index > max ) ? min : index)
 #define in_process(cx,cy,cols,rows)  (cx >= 0 && cx <= cols && cy >= 0 && cy <= rows)
 
+
+
+
+
 /*********
  * HELPERS
  *********/
-
-void calc_and_print_overall_cm(long long n_part, particle_t *par) {
-    int i;
-    double cmx = 0, cmy = 0, cmm = 0;
-    for (i = 0; i < n_part; i++) {
-        cmx += par[i].x * par[i].m;
-        cmy += par[i].y * par[i].m;
-        cmm += par[i].m;
-    }
-
-    cmx = cmx / cmm;
-    cmy = cmy / cmm;
-
-    printf("%.2f %.2f\n", cmx, cmy);
-}
 
 void print_id_map(int **id_map,long ncside) {
     for(int i=0; i<ncside; i++) {
@@ -68,9 +57,33 @@ void print_particle(particle_t *par) {
     fflush(stdout);
 }
 
-/**************************
- * DATA GENERATION/DISTRIB
- **************************/
+
+void print_par(int id, particle_t *par, int num_par) {
+    // print processor received particles
+    printf("id:%d - num_par=%d\n", id, num_par);
+    for(int i=0; i<num_par; i++) {
+        printf("id:%d (%.2f, %.2f)\n", id, par[i].x, par[i].y);
+    }
+}
+
+
+void print_cells(int id, int *cx, int *cy, cell_t **cells, int cols, int rows) {
+    // print processor cells
+    for(int i=0; i<cols; i++) {
+        for(int j=0; j<rows; j++) {
+            printf("id:%d - cell:[%d,%d] - cm:(%f,%f)\n", id, i+cx[0], j+cy[0], cells[i][j].x, cells[i][j].y);
+        }
+    }
+}
+
+
+
+
+
+
+/******************************
+ * DATA GENERATION/DISTRIBUTION
+ ******************************/
 
 void get_processor_c(int id, int dim, int size, long ncside, int *c) {
     int coord = id % dim, cmin = coord * size, cmax;
@@ -141,12 +154,23 @@ void populate_id_map(int **id_map, int dims[], int sizes[], long ncside, int p) 
 }
 
 
+
+
+
+
+
+
+
 /*****************
  * CELL FUNCTIONS
  *****************/
 
 int calc_cell_number(double pos, double interval, long ncside) {
     return labs(((int) floor(pos / interval)) % ncside);
+}
+
+int calc_processor_cell_number(double pos, double interval, long ncside, int max) {
+    return labs((((int) floor(pos / interval)) % ncside) % max);
 }
 
 void init_cells_matrix(int cols, int rows, cell_t **cells) {
@@ -220,7 +244,6 @@ void build_mpi_cell_type(MPI_Datatype *mpi_cell_type) {
     cell_t *cell;
 
     // Create a MPI type for struct particle_t
-
     // Build a derived datatype consisting of three doubles and a long
     const int nitems=4;
 
@@ -228,8 +251,7 @@ void build_mpi_cell_type(MPI_Datatype *mpi_cell_type) {
     int blocklengths[4] = {1,1,1,1};
 
     // First specify the types
-    MPI_Datatype types[4] = {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE,
-                             MPI_LONG};
+    MPI_Datatype types[4] = {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_LONG};
 
     MPI_Aint displacements[4];
     MPI_Aint addresses[5];
@@ -253,11 +275,21 @@ void build_mpi_cell_type(MPI_Datatype *mpi_cell_type) {
     MPI_Type_commit(mpi_cell_type);
 }
 
+
+
+
+
+
+
+
+
+
 /*****************************
  * PROBLEM SPECIFIC FUNCTIONS
  *****************************/
 
-void calc_all_cells_cm(cell_t **cells, long long n_part, particle_t *par, int cols, int rows) {
+void calc_all_cells_cm(cell_t **cells, long long n_part, particle_t *par, int cols, int rows,
+        long ncside, double interval) {
     /*
      *  Determine center of mass of all cells of given processor.
      *  For each particle, determine to which cell it belongs,
@@ -266,29 +298,27 @@ void calc_all_cells_cm(cell_t **cells, long long n_part, particle_t *par, int co
      *  CM = (for all i SUM((xi, yi) * mi)) / SUM(for all i, mi)
      * */
 
-    int i, j, cx, cy;
-    double intervalX = 1.0 / cols;
-    double intervalY = 1.0 / rows;
-    cell_t cell;
+    int i, j, x, y;
+    cell_t *cell;
 
     for (i = 0; i < n_part; i++) {
-        cx = calc_cell_number(par[i].x, intervalX, cols);
-        cy = calc_cell_number(par[i].y, intervalY, rows);
-        cell = cells[cx][cy];
+        x = calc_processor_cell_number(par[i].x, interval, ncside, cols);
+        y = calc_processor_cell_number(par[i].y, interval, ncside, rows);
+        cell = &cells[x][y];
 
-        cell.x += par[i].x * par[i].m;
-        cell.y += par[i].y * par[i].m;
-        cell.m += par[i].m;
-        cell.npar++;
+        cell->x += par[i].x * par[i].m;
+        cell->y += par[i].y * par[i].m;
+        cell->m += par[i].m;
+        cell->npar++;
     }
 
     // after all total masses and positions have been determined
     for (i = 0; i < cols; i++) {
         for (j = 0; j < rows; j++) {
-            cell = cells[i][j];
-            if (cell.npar != 0) {
-                cell.x = cell.x / cell.m;
-                cell.y = cell.y / cell.m;
+            cell = &cells[i][j];
+            if (cell->npar != 0) {
+                cell->x = cell->x / cell->m;
+                cell->y = cell->y / cell->m;
             }
         }
     }
@@ -397,6 +427,30 @@ void calc_all_particle_force(long ncside, cell_t **cells, long long n_part,
     }
 }
 
+// Draft - Updating
+void calc_and_print_overall_cm(long long n_part, particle_t *par) {
+    int i;
+    double cmx = 0, cmy = 0, cmm = 0;
+    for (i = 0; i < n_part; i++) {
+        cmx += par[i].x * par[i].m;
+        cmy += par[i].y * par[i].m;
+        cmm += par[i].m;
+    }
+
+    cmx = cmx / cmm;
+    cmy = cmy / cmm;
+
+    printf("%.2f %.2f\n", cmx, cmy);
+}
+
+
+
+
+
+
+
+
+
 /*******
  * MAIN
  *******/
@@ -484,7 +538,8 @@ int main(int argc, char *argv[]) {
         num_par = processors_particles_sizes[0];
         par = processors_particles[0];
 
-    }else {
+    }
+    else {
 
         // Receive respective particles from processor id=0 who initialized the system
         // First each process needs to know how many particles it is going to receive in the array
@@ -497,12 +552,8 @@ int main(int argc, char *argv[]) {
         MPI_Recv(par, num_par, mpi_particle_type, 0, PAR_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     }
 
-
     // print processor received particles
-    printf("id:%d - num_par=%d\n", id, num_par);
-    for(i=0; i<num_par; i++) {
-        printf("id:%d (%.2f, %.2f)\n", id, par[i].x, par[i].y);
-    }
+    print_par(id, par, num_par);
 
     /* From here on the computation is done identically at each process. */
 
@@ -522,10 +573,14 @@ int main(int argc, char *argv[]) {
     create_cells_matrix(cols, rows, cells);
     init_cells_matrix(cols, rows, cells);
 
+    double interval = 1.0 / ncside;
+
     for (i = 0; i < n_tsteps; i++) {
 
         // determine center of mass of all cells
-        calc_all_cells_cm(cells, num_par, par, cols, rows);
+        calc_all_cells_cm(cells, num_par, par, cols, rows, ncside, interval);
+        print_cells(id, cx, cy, cells, cols, rows);
+
 
         // compute the gravitational force applied to each particle (UPDATING - not Working!!)
         //calc_all_particle_force(ncside, cells, num_par, par, cols, rows, cx[0], cy[0], id_map);
