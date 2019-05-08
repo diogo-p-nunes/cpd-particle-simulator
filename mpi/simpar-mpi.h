@@ -34,7 +34,7 @@ void free_memory(int ncside, cell_t **cells, particle_t *par);
 
 void update_force(cell_t *cell, particle_t *par);
 
-void calc_all_particle_force(long ncside, cell_t **cells, long long n_part, particle_t *par);
+void calc_all_particle_force(long ncside, cell_t **cells, long long n_part, particle_t *par, int cols, int rows, int xmin, int ymin, int **id_map);
 
 void update_vel(double acc_x, double acc_y, particle_t *particle);
 
@@ -44,7 +44,7 @@ void calc_all_particle_new_values(long ncside, long long n_part, particle_t *par
 
 int calc_cell_number(double pos, double interval, long ncside);
 
-void calc_all_cells_cm(long ncside, cell_t **cells, long long n_part, particle_t *par);
+void calc_all_cells_cm(cell_t **cells, long long n_part, particle_t *par, int cols, int rows);
 
 void init_cells_matrix(int cols, int rows, cell_t **cells);
 
