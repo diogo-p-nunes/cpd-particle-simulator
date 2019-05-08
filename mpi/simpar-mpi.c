@@ -359,16 +359,19 @@ void update_force(cell_t *cell, particle_t *particle) {
     }
 }
 
+
+/*
 // Draft - Updating
 void calc_all_particle_force(long ncside, cell_t **cells, long long n_part,
                              particle_t *par, int cols, int rows, int xmin, int ymin, int **id_map) {
     /*
      *  Determine gravitational force for each particle.
      *  A particle is influenced by gravity from all the center of masses
-     *  of the adjacenct cells and the center of mass of the cell that belongs to.
+     *  of the adjacenct cells and the center of mass of the cell that it belongs to.
      *
      *  GF = G * ma * mb / dab^2
      * */
+
     int i, cellx, celly, realX, realY, cx, cy;
     double intervalX = 1.0 / cols;
     double intervalY = 1.0 / rows;
@@ -392,7 +395,8 @@ void calc_all_particle_force(long ncside, cell_t **cells, long long n_part,
             int id = id_map[realX][realY]; // get the id with the cell
             // Ask for the cell
             // process with id = id has to send cell_t struct to this one??? How?
-        }else{ // get into the process coordinates
+        }
+        else{ // get into the process coordinates
             cx = realX - xmin;
             cy = realY - ymin;
         }
@@ -427,6 +431,8 @@ void calc_all_particle_force(long ncside, cell_t **cells, long long n_part,
     }
 }
 
+*/
+
 // Draft - Updating
 void calc_and_print_overall_cm(long long n_part, particle_t *par) {
     int i;
@@ -442,6 +448,44 @@ void calc_and_print_overall_cm(long long n_part, particle_t *par) {
 
     printf("%.2f %.2f\n", cmx, cmy);
 }
+
+
+
+void calc_all_particle_force(long ncside, cell_t **cells, long long n_part,
+                             particle_t *par, int cols, int rows) {
+    /*
+     *  Determine gravitational force for each particle.
+     *  A particle is influenced by gravity from all the center of masses
+     *  of the adjacenct cells and the center of mass of the cell that belongs to.
+     *
+     *  GF = G * ma * mb / dab^2
+     * */
+    int i, cellx, celly, cx, cy;
+    double interval = 1.0 / ncside;
+
+    for (i = 0; i < n_part; i++) {
+        cellx = calc_processor_cell_number(par[i].x, interval, ncside, cols);
+        celly = calc_processor_cell_number(par[i].y, interval, ncside, rows);
+
+        int k, j;
+        // start on the top left cell in relation to this one
+        cx = wrap_around(cellx - 1, 0, ncside - 1);
+        cy = wrap_around(celly + 1, 0, ncside - 1);
+        for (k = 0; k < 3; k++) {
+            for (j = 0; j < 3; j++) {
+                // update force
+                update_force(&cells[cx][cy], &par[i]);
+
+                // move to next cell on the right
+                cx = wrap_around(cx + 1, 0, ncside - 1);
+            }
+            // move to the row below, left-most cell
+            cy = wrap_around(cy - 1, 0, ncside - 1);
+            cx = wrap_around(cellx - 1, 0, ncside - 1);
+        }
+    }
+}
+
 
 
 
@@ -582,8 +626,12 @@ int main(int argc, char *argv[]) {
         print_cells(id, cx, cy, cells, cols, rows);
 
 
-        // compute the gravitational force applied to each particle (UPDATING - not Working!!)
-        //calc_all_particle_force(ncside, cells, num_par, par, cols, rows, cx[0], cy[0], id_map);
+        // compute the gravitational force applied to each particle
+        // First we have to receive all the cells that we will need from the surrounding cells
+        cell_t **id_received_cells_map = (cell_t*) malloc(p * sizeof(cell_t*));
+
+
+        calc_all_particle_force(ncside, cells, num_par, par, cols, rows);
 
         // print_particles(n_part, par);
 
