@@ -30,5 +30,8 @@ simpar-mpi.o: simpar-mpi.c simpar-mpi.h init_particles.h
 init_particles.o: init_particles.c init_particles.h
 	$(CC) $(CFLAGS) -c init_particles.c
 
+run:
+	srun -n 6 simpar-mpi 1 7 10 1
+
 clean:
 	rm -f *.o simpar *.dSYM

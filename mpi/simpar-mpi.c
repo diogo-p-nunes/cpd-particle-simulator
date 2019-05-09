@@ -49,6 +49,7 @@ void print_processors_particles(particle_t **processors_particles, int *processo
             print_particle(&array[j]);
         }
         printf("\n");
+        fflush(stdout);
     }
 }
 
@@ -61,8 +62,10 @@ void print_particle(particle_t *par) {
 void print_par(int id, particle_t *par, int num_par) {
     // print processor received particles
     printf("id:%d - num_par=%d\n", id, num_par);
+    fflush(stdout);
     for(int i=0; i<num_par; i++) {
         printf("id:%d (%.2f, %.2f)\n", id, par[i].x, par[i].y);
+        fflush(stdout);
     }
 }
 
@@ -72,6 +75,7 @@ void print_cells(int id, int *cx, int *cy, cell_t **cells, int cols, int rows) {
     for(int i=0; i<cols; i++) {
         for(int j=0; j<rows; j++) {
             printf("id:%d - cell:[%d,%d] - cm:(%f,%f)\n", id, i+cx[0], j+cy[0], cells[i][j].x, cells[i][j].y);
+            fflush(stdout);
         }
     }
 }
@@ -151,6 +155,42 @@ void populate_id_map(int **id_map, int dims[], int sizes[], long ncside, int p) 
             }
         }
     }
+}
+
+
+
+void send_and_receive_cells(cell_t **id_received_cells_map, int **id_map, cell_t **cells,
+        int *cx, int *cy, int ncside, int cols, int rows, MPI_Datatype mpi_cell_type, int id) {
+    // target cell coordinates and id
+    int tx, ty;
+    int tid, tsize;
+    int CELLS_TAG = 666;
+
+    /*
+    for(int i=0; i<1; i++) {
+        for(int j=0; j<1; j++) {
+            // i -> cx, j -> cy
+
+            tx = wrap_around(cx[i]-1, 0, ncside-1);
+            ty = cy[j];
+            tid = id_map[tx][ty];
+            tsize = rows;
+
+            MPI_Send(&cells[0][0], tsize, mpi_cell_type, tid, CELLS_TAG, MPI_COMM_WORLD);
+            printf("id:%d - SENT TO - (%d,%d)->id:%d - tsize:%d\n", id, tx, ty, tid, tsize);
+            fflush(stdout);
+        }
+    }
+
+    */
+
+
+
+    id_received_cells_map[tid] = (cell_t*) malloc(tsize * sizeof(cell_t));
+
+    MPI_Recv(&id_received_cells_map[tid], tsize, mpi_cell_type, tid, CELLS_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    printf("id:%d RECEIVED FROM - id:%d\n", id, tid);
+    fflush(stdout);
 }
 
 
@@ -364,13 +404,6 @@ void update_force(cell_t *cell, particle_t *particle) {
 // Draft - Updating
 void calc_all_particle_force(long ncside, cell_t **cells, long long n_part,
                              particle_t *par, int cols, int rows, int xmin, int ymin, int **id_map) {
-    /*
-     *  Determine gravitational force for each particle.
-     *  A particle is influenced by gravity from all the center of masses
-     *  of the adjacenct cells and the center of mass of the cell that it belongs to.
-     *
-     *  GF = G * ma * mb / dab^2
-     * */
 
     int i, cellx, celly, realX, realY, cx, cy;
     double intervalX = 1.0 / cols;
@@ -450,7 +483,7 @@ void calc_and_print_overall_cm(long long n_part, particle_t *par) {
 }
 
 
-
+/*
 void calc_all_particle_force(long ncside, cell_t **cells, long long n_part,
                              particle_t *par, int cols, int rows) {
     /*
@@ -459,7 +492,7 @@ void calc_all_particle_force(long ncside, cell_t **cells, long long n_part,
      *  of the adjacenct cells and the center of mass of the cell that belongs to.
      *
      *  GF = G * ma * mb / dab^2
-     * */
+     *
     int i, cellx, celly, cx, cy;
     double interval = 1.0 / ncside;
 
@@ -486,7 +519,7 @@ void calc_all_particle_force(long ncside, cell_t **cells, long long n_part,
     }
 }
 
-
+*/
 
 
 
@@ -628,10 +661,10 @@ int main(int argc, char *argv[]) {
 
         // compute the gravitational force applied to each particle
         // First we have to receive all the cells that we will need from the surrounding cells
-        cell_t **id_received_cells_map = (cell_t*) malloc(p * sizeof(cell_t*));
+        cell_t **id_received_cells_map = (cell_t**) malloc(p * sizeof(cell_t*));
+        send_and_receive_cells(id_received_cells_map, id_map, cells, cx, cy, ncside, cols, rows, mpi_cell_type, id);
 
-
-        calc_all_particle_force(ncside, cells, num_par, par, cols, rows);
+        // calc_all_particle_force(ncside, cells, num_par, par, cols, rows);
 
         // print_particles(n_part, par);
 
