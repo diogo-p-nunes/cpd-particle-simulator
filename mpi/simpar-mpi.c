@@ -159,13 +159,10 @@ void populate_id_map(int **id_map, int dims[], int sizes[], long ncside, int p) 
 
 void build_contiguous_array(cell_t *send_cells, cell_t **cells, int tsize, int i, int j, int rows, int id) {
 
-    send_cells = (cell_t*) malloc(tsize * sizeof(cell_t));
-
     // we only have this problem when (i=0,j=1) or (i=1,j=0)
     int entry = j==0 ? 0 : rows-1;
 
     for(int k=0; k<tsize; k++) {
-        if(id==4) printf("id:%d, k:%d, entry:%d, tsize:%d\n", id,k,entry,tsize);
         send_cells[k] = cells[k][entry];
     }
 }
@@ -202,10 +199,10 @@ void send_and_receive_cells(cell_t **id_received_cells_map, int **id_map, cell_t
 
                 // data to send
                 cell_t *send_cells;
+
                 if(((i == 0 && j == 1) || (i == 1 && j == 0)) && (k==1)) {
+                    send_cells = (cell_t*) malloc(tsize * sizeof(cell_t));
                     build_contiguous_array(send_cells, cells, tsize, i, j, rows, id);
-                    //printf("id:%d - build contiguous for id:%d\n", id, tid);
-                    //fflush(stdout);
                 }
                 else {
                     send_cells = &cells[i][0];
@@ -217,11 +214,10 @@ void send_and_receive_cells(cell_t **id_received_cells_map, int **id_map, cell_t
                 }
 
                 MPI_Send(send_cells, tsize, mpi_cell_type, tid, CELLS_TAG, MPI_COMM_WORLD);
-                if(id==4) {
-                    printf("id:%d sent - id:%d - tsize:%d\n", id, tid, tsize);
-                    print_cells(id, cx, cy, &send_cells, 1, tsize);
-                    fflush(stdout);
-                }
+
+                printf("id:%d sent - id:%d - tsize:%d\n", id, tid, tsize);
+                print_cells(id, cx, cy, &send_cells, 1, tsize);
+                fflush(stdout);
             }
         }
     }
@@ -253,11 +249,9 @@ void send_and_receive_cells(cell_t **id_received_cells_map, int **id_map, cell_t
 
                 MPI_Recv(id_received_cells_map[tid], tsize, mpi_cell_type, tid, CELLS_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
-                if(id==4) {
-                    printf("id:%d received - id:%d\n", id, tid);
-                    print_cells(id, cx, cy, &id_received_cells_map[tid], 1, tsize);
-                    fflush(stdout);
-                }
+                printf("id:%d received - id:%d\n", id, tid);
+                print_cells(id, cx, cy, &id_received_cells_map[tid], 1, tsize);
+                fflush(stdout);
             }
         }
     }
