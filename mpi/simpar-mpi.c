@@ -157,7 +157,18 @@ void populate_id_map(int **id_map, int dims[], int sizes[], long ncside, int p) 
     }
 }
 
+void build_contiguous_array(cell_t *send_cells, cell_t **cells, int tsize, int i, int j, int rows, int id) {
 
+    send_cells = (cell_t*) malloc(tsize * sizeof(cell_t));
+
+    // we only have this problem when (i=0,j=1) or (i=1,j=0)
+    int entry = j==0 ? 0 : rows-1;
+
+    for(int k=0; k<tsize; k++) {
+        if(id==4) printf("id:%d, k:%d, entry:%d, tsize:%d\n", id,k,entry,tsize);
+        send_cells[k] = cells[k][entry];
+    }
+}
 
 void send_and_receive_cells(cell_t **id_received_cells_map, int **id_map, cell_t **cells,
         int *cx, int *cy, int ncside, int cols, int rows, MPI_Datatype mpi_cell_type, int id) {
@@ -166,31 +177,91 @@ void send_and_receive_cells(cell_t **id_received_cells_map, int **id_map, cell_t
     int tid, tsize;
     int CELLS_TAG = 666;
 
-    /*
-    for(int i=0; i<1; i++) {
-        for(int j=0; j<1; j++) {
-            // i -> cx, j -> cy
 
-            tx = wrap_around(cx[i]-1, 0, ncside-1);
-            ty = cy[j];
-            tid = id_map[tx][ty];
-            tsize = rows;
+    for(int i=0; i<2; i++) {
+        for(int j=0; j<2; j++) {
+            for(int k=0; k<2; k++) {
+                // i -> cx, j -> cy
 
-            MPI_Send(&cells[0][0], tsize, mpi_cell_type, tid, CELLS_TAG, MPI_COMM_WORLD);
-            printf("id:%d - SENT TO - (%d,%d)->id:%d - tsize:%d\n", id, tx, ty, tid, tsize);
-            fflush(stdout);
+                // determine direction im sending data
+                int xdir = i == 0 ? -1 : 1;
+                int ydir = j == 0 ? -1 : 1;
+                tsize = 1;
+
+                // if not diagonal
+                if(k == 1) {
+                    xdir = (i+j) == 1 ? 0 : xdir;
+                    ydir = (i+j) == 0 || (i+j) == 2 ? 0 : ydir;
+                    tsize = (i+j) == 1 ? cols : rows;
+                }
+
+                // target processor info
+                tx = wrap_around(cx[i]+xdir, 0, ncside-1);
+                ty = wrap_around(cy[j]+ydir, 0, ncside-1);
+                tid = id_map[tx][ty];
+
+                // data to send
+                cell_t *send_cells;
+                if(((i == 0 && j == 1) || (i == 1 && j == 0)) && (k==1)) {
+                    build_contiguous_array(send_cells, cells, tsize, i, j, rows, id);
+                    //printf("id:%d - build contiguous for id:%d\n", id, tid);
+                    //fflush(stdout);
+                }
+                else {
+                    send_cells = &cells[i][0];
+                }
+
+                if(tsize == 1) {
+                    int entry = j==0 ? 0 : rows-1;
+                    send_cells = &cells[i][entry];
+                }
+
+                MPI_Send(send_cells, tsize, mpi_cell_type, tid, CELLS_TAG, MPI_COMM_WORLD);
+                if(id==4) {
+                    printf("id:%d sent - id:%d - tsize:%d\n", id, tid, tsize);
+                    print_cells(id, cx, cy, &send_cells, 1, tsize);
+                    fflush(stdout);
+                }
+            }
         }
     }
 
-    */
+    for(int i=0; i<2; i++) {
+        for(int j=0; j<2; j++) {
+            for(int k=0; k<2; k++) {
+                // i -> cx, j -> cy
 
+                // determine direction im sending data
+                int xdir = i == 0 ? -1 : 1;
+                int ydir = j == 0 ? -1 : 1;
+                tsize = 1;
 
+                // if not diagonal
+                if(k == 1) {
+                    xdir = (i+j) == 1 ? 0 : xdir;
+                    ydir = (i+j) == 0 || (i+j) == 2 ? 0 : ydir;
+                    tsize = (i+j) == 1 ? cols : rows;
+                }
 
-    id_received_cells_map[tid] = (cell_t*) malloc(tsize * sizeof(cell_t));
+                // target processor info
+                tx = wrap_around(cx[i]+xdir, 0, ncside-1);
+                ty = wrap_around(cy[j]+ydir, 0, ncside-1);
+                tid = id_map[tx][ty];
 
-    MPI_Recv(&id_received_cells_map[tid], tsize, mpi_cell_type, tid, CELLS_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-    printf("id:%d RECEIVED FROM - id:%d\n", id, tid);
-    fflush(stdout);
+                // data to receive
+                id_received_cells_map[tid] = (cell_t*) malloc(tsize * sizeof(cell_t));
+
+                MPI_Recv(id_received_cells_map[tid], tsize, mpi_cell_type, tid, CELLS_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+                if(id==4) {
+                    printf("id:%d received - id:%d\n", id, tid);
+                    print_cells(id, cx, cy, &id_received_cells_map[tid], 1, tsize);
+                    fflush(stdout);
+                }
+            }
+        }
+    }
+
 }
 
 
@@ -314,6 +385,8 @@ void build_mpi_cell_type(MPI_Datatype *mpi_cell_type) {
     // Commit it so that it can be used
     MPI_Type_commit(mpi_cell_type);
 }
+
+
 
 
 
@@ -630,7 +703,7 @@ int main(int argc, char *argv[]) {
     }
 
     // print processor received particles
-    print_par(id, par, num_par);
+    //print_par(id, par, num_par);
 
     /* From here on the computation is done identically at each process. */
 
@@ -656,7 +729,7 @@ int main(int argc, char *argv[]) {
 
         // determine center of mass of all cells
         calc_all_cells_cm(cells, num_par, par, cols, rows, ncside, interval);
-        print_cells(id, cx, cy, cells, cols, rows);
+        if(id==4) print_cells(id, cx, cy, cells, cols, rows);
 
 
         // compute the gravitational force applied to each particle
