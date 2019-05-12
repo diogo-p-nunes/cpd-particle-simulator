@@ -24,6 +24,7 @@ All type definitions
 typedef struct {
     // if cell has npar == 0, then it does not have any par inside
     double x, y, m;
+    int cx, cy;
     long npar;
 
 } cell_t;
@@ -34,8 +35,8 @@ void free_memory(int ncside, cell_t **cells, particle_t *par);
 
 void update_force(cell_t *cell, particle_t *par);
 
-void calc_all_particle_force(long ncside, cell_t **cells, long long n_part, particle_t *par, int cols, int rows,
-        int xmin, int ymin, int **id_map);
+void calc_all_particle_force(long ncside, cell_t **cells, long long n_part, int *cx, int *cy,
+            particle_t *par, int cols, int rows, cell_t **id_received_cells_map,int **id_map, int*counter);
 
 void update_vel(double acc_x, double acc_y, particle_t *particle);
 
@@ -48,7 +49,7 @@ int calc_cell_number(double pos, double interval, long ncside);
 void calc_all_cells_cm(cell_t **cells, long long n_part, particle_t *par, int cols, int rows,
         long ncside, double interval);
 
-void init_cells_matrix(int cols, int rows, cell_t **cells);
+void init_cells_matrix(int cols, int rows, cell_t **cells, int xmin, int ymin);
 
 void create_cells_matrix(int cols, int rows, cell_t **cells);
 
@@ -70,7 +71,9 @@ void distribute_processors_particles(particle_t **processors_particles, int* pro
 
 void init_id_map(int **id_map, long ncside);
 
-void populate_id_map(int **id_map, int dims[], int sizes[], long ncside, int p);
+void init_p_dims(int **p_dims, int p);
+
+void populate_id_map(int **id_map, int **p_dims, int dims[], int sizes[], long ncside);
 
 void print_id_map(int **id_map,long ncside);
 
