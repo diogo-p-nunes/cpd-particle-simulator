@@ -30,8 +30,7 @@ void print_particles(long long n_part, particle_t *par) {
     printf("[Particles]\n");
     int i;
     for (i = 0; i < n_part; i++) {
-        printf("\tp=(%f, %f) | f=(%f, %f)\n", par[i].x, par[i].y, par[i].fx,
-               par[i].fy);
+        printf("\tp=(%f, %f) | f=(%f, %f)\n", par[i].x, par[i].y, par[i].fx, par[i].fy);
     }
 }
 

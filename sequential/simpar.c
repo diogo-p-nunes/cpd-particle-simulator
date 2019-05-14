@@ -306,7 +306,7 @@ int main(int argc, char *argv[]) {
     init_cells_matrix(ncside, cells);
 
     print_particles(n_part, par);
-    print_cells(ncside, cells);
+    //print_cells(ncside, cells);
 
     int i;
     for (i = 0; i < n_tsteps; i++) {
@@ -316,8 +316,8 @@ int main(int argc, char *argv[]) {
         // compute the gravitational force applied to each particle
         calc_all_particle_force(ncside, cells, n_part, par);
 
-        // print_particles(n_part, par);
         calc_all_particle_new_values(ncside, n_part, par);
+        print_particles(n_part, par);
 
         // init cells and particles aplied forces for next time step
         init_cells_matrix(ncside, cells);
