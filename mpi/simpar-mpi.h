@@ -29,7 +29,7 @@ typedef struct {
 
 } cell_t;
 
-void calc_and_print_overall_cm(long long n_part, particle_t *par);
+void calc_and_print_overall_cm(long long n_part, particle_t *par, double **result);
 
 void free_memory(int ncside, cell_t **cells, particle_t *par);
 
@@ -53,7 +53,7 @@ void init_cells_matrix(int cols, int rows, cell_t **cells, int xmin, int ymin);
 
 void create_cells_matrix(int cols, int rows, cell_t **cells);
 
-void init_particle_force(particle_t *par, long long n_part);
+void init_particle_force(particle_t *par, long long num_par, int id, particle_t **containsParticleZero);
 
 
 // new funcs

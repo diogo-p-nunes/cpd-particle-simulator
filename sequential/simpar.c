@@ -88,30 +88,30 @@ void update_force(cell_t *cell, particle_t *particle) {
      * */
     double dist, fx, fy, magnitude, norm;
 
-    if (cell->npar != 0) {
-        dist = euclidean(cell->x, particle->x, cell->y, particle->y);
 
-        if (dist >= EPSLON) {
-            magnitude = (G * particle->m * cell->m) / (dist * dist);
-        } else {
-            magnitude = 0;
-        }
+    dist = euclidean(cell->x, particle->x, cell->y, particle->y);
 
-        // determine force direction and norm
-        fx = cell->x - particle->x;
-        fy = cell->y - particle->y;
-        norm = sqrt(fx * fx + fy * fy);
-
-        if (norm != 0) {
-            // normalize direction vector
-            fx = fx / norm;
-            fy = fy / norm;
-        }
-
-        // update particle's force vector
-        particle->fx += (fx * magnitude);
-        particle->fy += (fy * magnitude);
+    if (dist >= EPSLON) {
+        magnitude = (G * particle->m * cell->m) / (dist * dist);
+    } else {
+        magnitude = 0;
     }
+
+    // determine force direction and norm
+    fx = cell->x - particle->x;
+    fy = cell->y - particle->y;
+    norm = sqrt(fx * fx + fy * fy);
+
+    if (norm != 0) {
+        // normalize direction vector
+        fx = fx / norm;
+        fy = fy / norm;
+    }
+
+    // update particle's force vector
+    particle->fx += (fx * magnitude);
+    particle->fy += (fy * magnitude);
+
 }
 
 void calc_all_particle_force(long ncside, cell_t **cells, long long n_part,
@@ -256,14 +256,14 @@ void calc_all_cells_cm(long ncside, cell_t **cells, long long n_part, particle_t
 void init_cells_matrix(long ncside, cell_t **cells) {
     // default value to 0
     int i, j;
-    cell_t *cell;
+    cell_t cell;
     for (i = 0; i < ncside; i++) {
         for (j = 0; j < ncside; j++) {
-            cell = &cells[i][j];
-            cell->x = 0.0;
-            cell->y = 0.0;
-            cell->m = 0.0;
-            cell->npar = 0;
+            cell = cells[i][j];
+            cell.x = 0.0;
+            cell.y = 0.0;
+            cell.m = 0.0;
+            cell.npar = 0;
         }
     }
 }
@@ -305,7 +305,7 @@ int main(int argc, char *argv[]) {
     create_cells_matrix(ncside, cells);
     init_cells_matrix(ncside, cells);
 
-    print_particles(n_part, par);
+    //print_particles(n_part, par);
     //print_cells(ncside, cells);
 
     int i;
@@ -317,7 +317,7 @@ int main(int argc, char *argv[]) {
         calc_all_particle_force(ncside, cells, n_part, par);
 
         calc_all_particle_new_values(ncside, n_part, par);
-        print_particles(n_part, par);
+        //print_particles(n_part, par);
 
         // init cells and particles aplied forces for next time step
         init_cells_matrix(ncside, cells);

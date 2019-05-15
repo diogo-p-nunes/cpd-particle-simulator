@@ -50,7 +50,7 @@ void print_particle(particle_t *par) {
 }
 
 void print_particle_force(particle_t *par) {
-    printf("p=(%f,%f) - f=(%f %f)\n", par->fx, par->fy, par->x, par->y);
+    printf("p=(%f,%f) - f=(%f %f)\n", par->fx, par->fy, par->x, par->y, par->tag);
     fflush(stdout);
 }
 
@@ -59,7 +59,7 @@ void print_par(int id, particle_t *par, int num_par) {
     //printf("id:%d - num_par=%d\n", id, num_par);
     fflush(stdout);
     for(int i=0; i<num_par; i++) {
-        printf("id:%d p=(%f, %f) f=(%f, %f)\n", id, par[i].x, par[i].y, par[i].fx, par[i].fy);
+        printf("id:%d p=(%.2f, %.2f) f=(%f, %f) tag=%lld\n", id, par[i].x, par[i].y, par[i].fx, par[i].fy, par[i].tag);
         fflush(stdout);
     }
 }
@@ -88,9 +88,9 @@ void print_received_cells(cell_t **id_received_cells_map, int p, int *counter, i
 
 
 
-/******************************
- * DATA GENERATION/DISTRIBUTION
- ******************************/
+/**********************************
+ * DATA GENERATION AND DISTRIBUTION
+ **********************************/
 
 void calculate_c(int *cx, int *cy, int id, int ncside, int*dims){
 
@@ -262,8 +262,6 @@ void send_and_receive_cells(cell_t **id_received_cells_map, int *counter, cell_t
 
                 if(counter[tid] > 0){
 
-                    //TODO: Podemos escrever diretamente no novo array realocado
-
                     cell_t* tmp_aux = (cell_t*) realloc(id_received_cells_map[tid], (counter[tid] + tsize) * sizeof(cell_t));
                     cell_t* tmp_receive = (cell_t*) malloc(tsize * sizeof(cell_t));
 
@@ -276,7 +274,6 @@ void send_and_receive_cells(cell_t **id_received_cells_map, int *counter, cell_t
                         id_received_cells_map[tid][m] = tmp_receive[c++];
 
                     counter[tid] += tsize;
-
                 }
                 else {
                     id_received_cells_map[tid] = (cell_t*) malloc(tsize * sizeof(cell_t));
@@ -292,9 +289,91 @@ void send_and_receive_cells(cell_t **id_received_cells_map, int *counter, cell_t
     }
 }
 
+void send_and_receive_moved_particles(particle_t **par, long long *num_par, long ncside, int *dims, int id, int p,
+        MPI_Datatype mpi_particle_type) {
+
+    //printf("id:%d Sending particles ...\n", id);
+    // automatically set to zero
+    long long *counter = (long long*) calloc(p, sizeof(long long));
+    particle_t **sending_part = (particle_t**) malloc(p * sizeof(particle_t*));
+
+    int x, y, tid;
+    double interval = 1.0 / ncside;
+
+    //printf("INICIO id:%d - num_par:%lld\n", id, (*num_par));
+
+    // determine what and how many particles to send to each processor
+    for(int i=0; i<(*num_par); i++) {
+        // real cell coordinates
+        //printf("interval=%f ncside=%ld\n", interval, ncside);
+        x = calc_cell_number((*par)[i].x, interval, ncside);
+        y = calc_cell_number((*par)[i].y, interval, ncside);
+        tid = get_id(dims[0], dims[1], x, y, ncside);
+
+        //printf("id=%d p=(%f,%f) c=(%d,%d) tid=%d\n", id, (*par)[i].x, (*par)[i].y, x, y, tid);
+
+        if(counter[tid] == 0) {
+            sending_part[tid] = (particle_t*) malloc(sizeof(particle_t));
+        }
+        else {
+            sending_part[tid] = (particle_t*) realloc(sending_part[tid], (counter[tid] + 1) * sizeof(particle_t));
+        }
+        counter[tid] += 1;
+        sending_part[tid][counter[tid]-1] = (*par)[i];
+
+    }
+
+    (*num_par) = counter[id];
+    (*par) = (particle_t*) malloc((*num_par) * sizeof(particle_t));
+    (*par) = sending_part[id];
+
+    // send the particles
+    int PART_TAG = 999;
+    for(int i=0; i<p; i++) {
+        if(i==id) continue;
+
+        int new_num_par = 0;
+
+        // First each process needs to know how many particles it is going to receive in the array
+        MPI_Request request = MPI_REQUEST_NULL;
+        MPI_Irecv(&new_num_par, 1, MPI_INT, i, PART_TAG, MPI_COMM_WORLD, &request);
+        MPI_Send(&counter[i], 1, MPI_INT, i, PART_TAG, MPI_COMM_WORLD);
+        MPI_Wait(&request, MPI_STATUS_IGNORE);
+
+        request = MPI_REQUEST_NULL;
+        long long old_size;
+        particle_t* tmp_receive;
+
+        if(new_num_par > 0) {
+            //printf("[RECEIVING] %d -> id=%d new_num_par=%lld\n", i, id, new_num_par);
+            fflush(stdout);
+
+            old_size = (*num_par);
+            (*num_par) = (*num_par) + new_num_par;
+
+            particle_t* tmp_aux = (particle_t*) realloc((*par), (*num_par) * sizeof(particle_t));
+            tmp_receive = (particle_t*) malloc(new_num_par * sizeof(particle_t));
+            (*par) = tmp_aux;
+            MPI_Irecv(tmp_receive, new_num_par, mpi_particle_type, i, PART_TAG, MPI_COMM_WORLD, &request);
+        }
+
+        if(counter[i] > 0) {
+            MPI_Send(sending_part[i], counter[i], mpi_particle_type, i, PART_TAG, MPI_COMM_WORLD);
+            //printf("id=%d -> %d new_num_par=%lld\n", id, i, counter[i]);
+        }
+
+        if(new_num_par > 0) {
+            MPI_Wait(&request, MPI_STATUS_IGNORE);
+
+            int c = 0;
+            for(int m = old_size; m < (*num_par); m++) (*par)[m] = tmp_receive[c++];
+        }
+
+    }
 
 
-
+    //printf("FIM id:%d - num_par:%lld\n", id, (*num_par));
+}
 
 
 
@@ -341,17 +420,17 @@ void build_mpi_particle_type(MPI_Datatype *mpi_particle_type) {
 
     // Create a MPI type for struct particle_t
     // Build a derived datatype consisting of three doubles, a long and one mpi_particle_type
-    const int nitems=7;
+    const int nitems=8;
 
     // Specify the number of elements of each type
-    int blocklengths[7] = {1,1,1,1,1,1,1};
+    int blocklengths[8] = {1,1,1,1,1,1,1,1};
 
     // First specify the types
-    MPI_Datatype types[7] = {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE,
-                             MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE};
+    MPI_Datatype types[8] = {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE,
+                             MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_LONG_LONG};
 
-    MPI_Aint displacements[7];
-    MPI_Aint addresses[8];
+    MPI_Aint displacements[8];
+    MPI_Aint addresses[9];
 
     // Calculate the displacements of the members relative to cell
     MPI_Get_address(par, &addresses[0]);
@@ -362,6 +441,7 @@ void build_mpi_particle_type(MPI_Datatype *mpi_particle_type) {
     MPI_Get_address(&(par->m), &addresses[5]);
     MPI_Get_address(&(par->fx), &addresses[6]);
     MPI_Get_address(&(par->fy), &addresses[7]);
+    MPI_Get_address(&(par->tag), &addresses[8]);
 
     displacements[0] = addresses[1] - addresses[0];
     displacements[1] = addresses[2] - addresses[0];
@@ -370,6 +450,7 @@ void build_mpi_particle_type(MPI_Datatype *mpi_particle_type) {
     displacements[4] = addresses[5] - addresses[0];
     displacements[5] = addresses[6] - addresses[0];
     displacements[6] = addresses[7] - addresses[0];
+    displacements[7] = addresses[8] - addresses[0];
 
     // Create the derived type
     MPI_Type_create_struct(nitems, blocklengths, displacements, types, mpi_particle_type);
@@ -476,30 +557,28 @@ void update_force(cell_t *cell, particle_t *particle) {
      * */
     double dist, fx, fy, magnitude, norm;
 
-    if (cell->npar != 0) {
-        dist = euclidean(cell->x, particle->x, cell->y, particle->y);
+    dist = euclidean(cell->x, particle->x, cell->y, particle->y);
 
-        if (dist >= EPSLON) {
-            magnitude = (G * particle->m * cell->m) / (dist * dist);
-        } else {
-            magnitude = 0;
-        }
-
-        // determine force direction and norm
-        fx = cell->x - particle->x;
-        fy = cell->y - particle->y;
-        norm = sqrt(fx * fx + fy * fy);
-
-        if (norm != 0) {
-            // normalize direction vector
-            fx = fx / norm;
-            fy = fy / norm;
-        }
-
-        // update particle's force vector
-        particle->fx += (fx * magnitude);
-        particle->fy += (fy * magnitude);
+    if (dist >= EPSLON) {
+        magnitude = (G * particle->m * cell->m) / (dist * dist);
+    } else {
+        magnitude = 0;
     }
+
+    // determine force direction and norm
+    fx = cell->x - particle->x;
+    fy = cell->y - particle->y;
+    norm = sqrt(fx * fx + fy * fy);
+
+    if (norm != 0) {
+        // normalize direction vector
+        fx = fx / norm;
+        fy = fy / norm;
+    }
+
+    // update particle's force vector
+    particle->fx += (fx * magnitude);
+    particle->fy += (fy * magnitude);
 }
 
 void calc_all_particle_force(long ncside, cell_t **cells, long long n_part, int *cx, int *cy,particle_t *par,
@@ -610,7 +689,32 @@ void update_pos(double acc_x, double acc_y, particle_t *particle) {
     particle->y = y_new;
 }
 
+void init_particle_force(particle_t *par, long long num_par, int id, particle_t **containsParticleZero) {
+    for(int i=0; i<num_par; i++) {
+        //printf("id:%d i:%d\n", id, i);
+        //fflush(stdout);
+        par[i].fx = 0;
+        par[i].fy = 0;
+        if(par[i].tag == 0) {
+            (*containsParticleZero) = &par[i];
+        }
+    }
+}
 
+void calc_and_print_overall_cm(long long n_part, particle_t *par, double **result) {
+    int i;
+    double cmx = 0, cmy = 0, cmm = 0;
+
+    for (i = 0; i < n_part; i++) {
+        cmx += par[i].x * par[i].m;
+        cmy += par[i].y * par[i].m;
+        cmm += par[i].m;
+    }
+
+    (*result)[0] = cmx;
+    (*result)[1] = cmy;
+    (*result)[2] = cmm;
+}
 
 
 
@@ -622,7 +726,7 @@ void update_pos(double acc_x, double acc_y, particle_t *particle) {
 
 int main(int argc, char *argv[]) {
 
-    int id, p, i;
+    int id, p;
     MPI_Init(&argc, &argv);
 
     MPI_Comm_rank(MPI_COMM_WORLD, &id);
@@ -653,7 +757,7 @@ int main(int argc, char *argv[]) {
     int sizes[2] = {floor(ncside/dims[0]), floor(ncside/dims[1])};
 
     // Define the number of particles for each processor (local)
-    int num_par = 0;
+    long long num_par = 0;
 
     // Define data sending TAGS for validation: IMPORTANT
     int NUM_PAR_TAG = 0;
@@ -670,6 +774,8 @@ int main(int argc, char *argv[]) {
         par = malloc(n_part * sizeof(particle_t));
         init_particles(nseed, ncside, n_part, par);
 
+        //print_par(id, par, n_part);
+
         // init array with particles that belong to each processor id
         particle_t **processors_particles  = (particle_t**) malloc(p * sizeof(particle_t*));
 
@@ -681,7 +787,7 @@ int main(int argc, char *argv[]) {
         // populate the processors particles array with the corresponding data of each processor
         generate_sending_data(n_part, par, ncside, processors_particles, processors_particles_sizes, dims);
 
-        print_processors_particles(processors_particles, processors_particles_sizes, p);
+        //print_processors_particles(processors_particles, processors_particles_sizes, p);
 
         // Distribute particles across all processors
         for(int i=1; i<p; i++) {
@@ -710,6 +816,11 @@ int main(int argc, char *argv[]) {
         MPI_Recv(par, num_par, mpi_particle_type, 0, PAR_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     }
 
+    //print_par(id, par, num_par);
+
+    //printf("id:%d num_par=%lld\n", id, num_par);
+    //fflush(stdout);
+
     /* From here on the computation is done identically at each process. */
 
     int *cx = (int*) malloc(2*sizeof(int));
@@ -728,32 +839,110 @@ int main(int argc, char *argv[]) {
 
     double interval = 1.0 / ncside;
 
-    int* counter = (int*) malloc(p * sizeof(int));
+
 
     //printf("id:%d cx=[%d,%d], cy=[%d,%d]\n", id, cx[0], cx[1], cy[0], cy[1]);
     //print_par(id, par, num_par);
 
-    for (i = 0; i < n_tsteps; i++) {
+    int* counter = (int*) calloc(p, sizeof(int));
+    particle_t *containsParticleZero;
+
+    for (int i = 0; i < n_tsteps; i++) {
+
 
         // determine center of mass of all cells
         calc_all_cells_cm(cells, num_par, par, cols, rows, ncside, interval);
         //print_cells(id, cx, cy, cells, cols, rows);
+        //printf("id:%d t:%d - calc_all_cells_cm\n", id, i);
+        fflush(stdout);
+
+        MPI_Barrier(MPI_COMM_WORLD);
 
         // First we have to receive all the cells that we will need from the surrounding cells
         cell_t **id_received_cells_map = (cell_t**) malloc(p * sizeof(cell_t**));
         send_and_receive_cells(id_received_cells_map, counter, cells, dims, cx, cy, ncside, cols, rows, mpi_cell_type, id, p);
         //print_received_cells(id_received_cells_map, p, counter, id);
+        //printf("id:%d t:%d - send_and_receive_cells\n", id, i);
+        fflush(stdout);
+
+        MPI_Barrier(MPI_COMM_WORLD);
 
         calc_all_particle_force(ncside, cells, num_par, cx, cy, par, cols, rows, id_received_cells_map,dims, counter);
-
         calc_all_particle_new_values(ncside, num_par, par);
-        print_par(id,par, num_par);
+        //print_par(id,par, num_par);
+        //printf("id:%d t:%d - calc_all_particle_new_values\n", id, i);
+        fflush(stdout);
 
+        MPI_Barrier(MPI_COMM_WORLD);
+
+
+        //printf("id=%d BEFORE num_par=%lld\n", id, num_par);
         // determine if any particle has moved to another processors designated cells
         // if yes, send it
+        send_and_receive_moved_particles(&par, &num_par, ncside, dims, id, p, mpi_particle_type);
+        //printf("id:%d t:%d - send_moved_particles\n", id, i);
+        fflush(stdout);
+
+        //printf("id=%d AFTER num_par=%lld\n", id, num_par);
+
+        MPI_Barrier(MPI_COMM_WORLD);
+
+        // flag to know which processor has particle zero
+        containsParticleZero = NULL;
 
         // init cells and particles aplied forces for next timestep
+        init_particle_force(par, num_par, id, &containsParticleZero);
+        init_cells_matrix(cols, rows, cells, cx[0], cy[0]);
+        //printf("id:%d t:%d - init_particle_force\n", id, i);
+        fflush(stdout);
     }
+
+    // Print the desired outputs
+
+    if(containsParticleZero != NULL) {
+        printf("%.2f %.2f\n", containsParticleZero->x, containsParticleZero->y);
+        fflush(stdout);
+    }
+
+    // calc overall CM
+    int PROC_CM = 909;
+    double *result = (double*) malloc(3 * sizeof(result));
+    calc_and_print_overall_cm(num_par, par, &result);
+
+    if(id != 0) {
+        // First each process needs to know how many particles it is going to receive in the array
+        MPI_Send(result, 3, MPI_DOUBLE, 0, PROC_CM, MPI_COMM_WORLD);
+    }
+    else {
+        // Receive and calc overall CM
+        double cmx = result[0];
+        double cmy = result[1];
+        double cmm = result[2];
+
+        //printf("%.2f %.2f %.2f\n", cmx, cmy, cmm);
+
+        for(int i=1; i<p; i++) {
+            MPI_Recv(result, 3, MPI_DOUBLE, i, PROC_CM, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            //printf("id:%d - %.2f %.2f %.2f\n", i, result[0], result[1], result[2]);
+
+            cmx += result[0];
+            cmy += result[1];
+            cmm += result[2];
+
+            result[0] = 0;
+            result[1] = 0;
+            result[2] = 0;
+        }
+
+        printf("%.2f %.2f\n", cmx/cmm, cmy/cmm);
+        fflush(stdout);
+    }
+
+
+    //printf("id:%d num_par=%lld\n", id, num_par);
+    //fflush(stdout);
+
+    //print_par(id, par, num_par);
 
     MPI_Finalize();
     return EXIT_SUCCESS;
