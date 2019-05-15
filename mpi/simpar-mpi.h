@@ -60,12 +60,12 @@ void init_particle_force(particle_t *par, long long num_par, int id, particle_t 
 
 void get_processor_c(int id, int dim, int size, long ncside, int *c);
 
-void init_processors_particles(particle_t **arr, int *processors_particles_size, int p);
+void init_processors_particles(particle_t ***arr, int *processors_particles_size, int p);
 
-void generate_sending_data(long long n_part, particle_t* par, long ncside, particle_t **processors_particles,
+void generate_sending_data(long long n_part, particle_t* par, long ncside, particle_t ***processors_particles,
         int* processors_particles_sizes, int*dims);
 
-void add_particle_to_processor_array(particle_t **array, particle_t *par, int id, int* processors_particles_sizes);
+void add_particle_to_processor_array(particle_t ***array, particle_t *par, int id, int* processors_particles_sizes);
 
 void distribute_processors_particles(particle_t **processors_particles, int* processors_particles_sizes, int p);
 
