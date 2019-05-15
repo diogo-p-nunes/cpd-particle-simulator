@@ -802,6 +802,9 @@ int main(int argc, char *argv[]) {
         num_par = processors_particles_sizes[0];
         par = processors_particles[0];
 
+        free(processors_particles);
+        free(processors_particles_sizes);
+
     }
     else {
 
@@ -895,6 +898,8 @@ int main(int argc, char *argv[]) {
         init_cells_matrix(cols, rows, cells, cx[0], cy[0]);
         //printf("id:%d t:%d - init_particle_force\n", id, i);
         fflush(stdout);
+
+        free(id_received_cells_map);
     }
 
     // Print the desired outputs
@@ -943,6 +948,10 @@ int main(int argc, char *argv[]) {
     //fflush(stdout);
 
     //print_par(id, par, num_par);
+
+    free(par);
+    free(cells);
+    free(counter);
 
     MPI_Finalize();
     return EXIT_SUCCESS;
