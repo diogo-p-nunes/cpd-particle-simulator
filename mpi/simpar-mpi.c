@@ -24,69 +24,6 @@
 #define get_id(dim0, dim1, x, y, ncside) ((dim0*x)/ncside + ((dim1*y)/ncside)*dim0)
 
 
-/*********
- * HELPERS
- *********/
-
-void print_processors_particles(particle_t **processors_particles, int *processors_particles_sizes, int p) {
-    printf("==PROCESSORS PARTICLES==\n");
-    for(int i=0; i<p; i++) {
-        printf("id:%d - ", i);
-        fflush(stdout);
-        particle_t *array = processors_particles[i];
-
-        for(int j=0; j<processors_particles_sizes[i]; j++) {
-            print_particle(&array[j]);
-        }
-        printf("\n");
-        fflush(stdout);
-    }
-    printf("==END==\n");
-}
-
-void print_particle(particle_t *par) {
-    printf("p=(%f,%f) ", par->x, par->y);
-    fflush(stdout);
-}
-
-void print_particle_force(particle_t *par) {
-    printf("p=(%f,%f) - f=(%f %f)\n", par->fx, par->fy, par->x, par->y, par->tag);
-    fflush(stdout);
-}
-
-void print_par(int id, particle_t *par, int num_par) {
-    // print processor received particles
-    //printf("id:%d - num_par=%d\n", id, num_par);
-    fflush(stdout);
-    for(int i=0; i<num_par; i++) {
-        printf("id:%d p=(%.2f, %.2f) f=(%f, %f) tag=%lld\n", id, par[i].x, par[i].y, par[i].fx, par[i].fy, par[i].tag);
-        fflush(stdout);
-    }
-}
-
-void print_cells(int id, int *cx, int *cy, cell_t **cells, int cols, int rows) {
-    // print processor cells
-    for(int i=0; i<cols; i++) {
-        for(int j=0; j<rows; j++) {
-            printf("id:%d - cell:[%d,%d] - cm:(%f,%f)\n", id, i+cx[0], j+cy[0], cells[i][j].x, cells[i][j].y);
-            fflush(stdout);
-        }
-    }
-}
-
-void print_received_cells(cell_t **id_received_cells_map, int p, int *counter, int id) {
-    for(int i =0; i<p; i++) {
-        cell_t *cells = id_received_cells_map[i];
-        int size = counter[i];
-        for(int j=0; j<size; j++) {
-            printf("id:%d cell=(%d,%d) from=%d cm=(%.2f,%.2f)\n", id, cells[j].cx, cells[j].cy, i, cells[j].x, cells[j].y);
-        }
-    }
-}
-
-
-
-
 
 /**********************************
  * DATA GENERATION AND DISTRIBUTION
@@ -133,14 +70,14 @@ void calculate_c(int *cx, int *cy, int id, int ncside, int*dims){
     }
 }
 
-void init_processors_particles(particle_t ***arr, int *processors_particles_sizes, int p) {
+void init_processors_particles(particle_t **arr, int *processors_particles_sizes, int p) {
     for(int i = 0; i<p; i++) {
         arr[i] = NULL;
         processors_particles_sizes[i] = 0;
     }
 }
 
-void generate_sending_data(long long n_part, particle_t* par, long ncside, particle_t ***processors_particles,
+void generate_sending_data(long long n_part, particle_t* par, long ncside, particle_t **processors_particles,
         int* processors_particles_sizes, int*dims) {
 
     // go through each particle and determine to which processor it belongs to
@@ -157,15 +94,15 @@ void generate_sending_data(long long n_part, particle_t* par, long ncside, parti
     }
 }
 
-void add_particle_to_processor_array(particle_t ***array, particle_t *par, int id, int* processors_particles_sizes) {
+void add_particle_to_processor_array(particle_t **array, particle_t *par, int id, int* processors_particles_sizes) {
 
     if(processors_particles_sizes[id] == 0)
-        (*array) = (particle_t **) malloc(sizeof(particle_t*));
+        (*array) = (particle_t *) malloc(sizeof(particle_t));
 
     else
-        (*array) = (particle_t **) realloc((*array), (processors_particles_sizes[id] + 1) * sizeof(particle_t*));
+        (*array) = (particle_t *) realloc((*array), (processors_particles_sizes[id] + 1) * sizeof(particle_t));
 
-    (*array)[processors_particles_sizes[id]] = par;
+    (*array)[processors_particles_sizes[id]] = (*par);
     processors_particles_sizes[id] += 1;
 
 }
@@ -508,10 +445,6 @@ void build_mpi_cell_type(MPI_Datatype *mpi_cell_type) {
 
 
 
-
-
-
-
 /*****************************
  * PROBLEM SPECIFIC FUNCTIONS
  *****************************/
@@ -771,108 +704,130 @@ int main(int argc, char *argv[]) {
     build_mpi_particle_type(&mpi_particle_type);
     build_mpi_cell_type(&mpi_cell_type);
 
+    long long max_generating_part = 10 * 1000000;
+    long long processed_n_part = 0;
+    long long processing_n_part = n_part < max_generating_part ? n_part : max_generating_part;
 
     if(id != 0) {
-        //printf("id:%d waiting to receive particles.\n", id);
-        //fflush(stdout);
+        // Receive generated particles in separate iterations to avoid memory overflow
+        while (processed_n_part < n_part) {
+            MPI_Request request = MPI_REQUEST_NULL;
+            int new_num_par = 0;
 
-        MPI_Request request = MPI_REQUEST_NULL;
-
-        // Receive respective particles from processor id=0 who initialized the system
-        // First each process needs to know how many particles it is going to receive in the array
-        MPI_Irecv(&num_par, 1, MPI_INT, 0, NUM_PAR_TAG, MPI_COMM_WORLD, &request);
-        MPI_Wait(&request, MPI_STATUS_IGNORE);
-        request = MPI_REQUEST_NULL;
-
-        // allocate memory for incoming number of particles
-        par = (particle_t*) malloc(num_par * sizeof(particle_t));
-
-        // all other processors receive the distributed data, respectively
-        MPI_Irecv(par, num_par, mpi_particle_type, 0, PAR_TAG, MPI_COMM_WORLD, &request);
-        MPI_Wait(&request, MPI_STATUS_IGNORE);
-
-        //printf("id:%d received particles.\n", id);
-        //fflush(stdout);
-    }
-    if(id == 0) {
-
-        printf("id:0 Init particles ...\n");
-        fflush(stdout);
-
-        // init particles locally
-        par = malloc(n_part * sizeof(particle_t));
-        init_particles(nseed, ncside, n_part, par);
-
-        printf("id:0 Done.\n");
-        fflush(stdout);
-
-        //print_par(id, par, n_part);
-
-        // init array with particles that belong to each processor id
-        particle_t ***processors_particles  = (particle_t***) malloc(p * sizeof(particle_t**));
-
-        // keep in memory the number of particles in each processor id particle array
-        // initialize array and sizes side array
-        int *processors_particles_sizes = (int*) malloc(p * sizeof(int));
-        init_processors_particles(processors_particles, processors_particles_sizes, p);
-
-        printf("id:0 Generating sending data ...\n");
-        fflush(stdout);
-
-        // populate the processors particles array with the corresponding data of each processor
-        generate_sending_data(n_part, par, ncside, processors_particles, processors_particles_sizes, dims);
-
-        //print_processors_particles(processors_particles, processors_particles_sizes, p);
-
-        printf("id:0 Sending particles ...\n");
-        fflush(stdout);
-
-        // Distribute particles across all processors
-        for(int i=1; i<p; i++) {
-            particle_t *sending_data = (particle_t*) malloc(processors_particles_sizes[i] * sizeof(particle_t));
-            for(int k=0; k<processors_particles_sizes[i]; k++) {
-                sending_data[k] = (*processors_particles[i][k]);
-            }
-
+            // Receive respective particles from processor id=0 who initialized the system
             // First each process needs to know how many particles it is going to receive in the array
-            MPI_Send(&processors_particles_sizes[i], 1, MPI_INT, i, NUM_PAR_TAG, MPI_COMM_WORLD);
+            MPI_Irecv(&new_num_par, 1, MPI_INT, 0, NUM_PAR_TAG, MPI_COMM_WORLD, &request);
+            MPI_Wait(&request, MPI_STATUS_IGNORE);
+            request = MPI_REQUEST_NULL;
 
-            // Now we can send the particles to the processors
-            MPI_Send(sending_data, processors_particles_sizes[i], mpi_particle_type, i, PAR_TAG, MPI_COMM_WORLD);
-
-            //printf("id:0 Sent to %d.\n", i);
+            //printf("id:%d receiveing new_num_par = %d\n", id, new_num_par);
             //fflush(stdout);
 
-            free(sending_data);
+            // allocate memory for incoming number of particles
+            if(num_par == 0) {
+                par = (particle_t*) malloc(new_num_par * sizeof(particle_t));
+            }
+            else {
+                par = (particle_t*) realloc(par, (num_par+new_num_par) * sizeof(particle_t));
+            }
+
+            // all other processors receive the distributed data, respectively
+            MPI_Irecv(&par[num_par], new_num_par, mpi_particle_type, 0, PAR_TAG, MPI_COMM_WORLD, &request);
+            MPI_Wait(&request, MPI_STATUS_IGNORE);
+
+            //printf("id:%d done received new_num_par = %d\n", id, new_num_par);
+            //fflush(stdout);
+
+            // update number of particles of processor
+            num_par += new_num_par;
+
+            // update for the next iteration of particles
+            processed_n_part += processing_n_part;
+            processing_n_part = (n_part - processed_n_part) < max_generating_part ? (n_part - processed_n_part) : max_generating_part;
         }
+    }
+    if(id == 0) {
+        // init particles locally
+        particle_t *aux_par = malloc(n_part * sizeof(particle_t));
+        init_particles(nseed, ncside, n_part, aux_par);
 
-        // Now processor id=0 can set its own particles (no longer knows about all particles)
-        num_par = processors_particles_sizes[0];
+        // Generate sending data in separate loops to avoid memory overflow
+        while (processed_n_part < n_part) {
 
-        par = (particle_t*) malloc(num_par * sizeof(particle_t));
-        for(int k=0; k<num_par; k++) {
-            par[k] = (*processors_particles[0][k]);
+            printf("processed:%lld, processing now:%lld\n", processed_n_part, processing_n_part);
+            fflush(stdout);
+
+            // init array with particles that belong to each processor id
+            particle_t **processors_particles  = (particle_t**) malloc(p * sizeof(particle_t*));
+
+            // keep in memory the number of particles in each processor id particle array
+            // initialize array and sizes side array
+            int *processors_particles_sizes = (int*) malloc(p * sizeof(int));
+            init_processors_particles(processors_particles, processors_particles_sizes, p);
+
+            //printf("processors particles init done\n");
+            //fflush(stdout);
+
+            // populate the processors particles array with the corresponding data of each processor
+            generate_sending_data(processing_n_part, &aux_par[processed_n_part], ncside, processors_particles, processors_particles_sizes, dims);
+
+            //printf("generate data done\n");
+            //fflush(stdout);
+
+            // Distribute particles across all processors
+            for(int i=1; i<p; i++) {
+                //printf("Sending processor %d num_par = %d\n", i, processors_particles_sizes[i]);
+                // First each process needs to know how many particles it is going to receive in the array
+                MPI_Send(&processors_particles_sizes[i], 1, MPI_INT, i, NUM_PAR_TAG, MPI_COMM_WORLD);
+
+                // Now we can send the particles to the processors
+                MPI_Send(processors_particles[i], processors_particles_sizes[i], mpi_particle_type, i, PAR_TAG, MPI_COMM_WORLD);
+            }
+
+            //printf("sent done\n");
+            //fflush(stdout);
+
+            // Now processor id=0 can set its own particles (no longer knows about all particles)
+            int new_num_par = processors_particles_sizes[0];
+            if(num_par == 0) {
+                par = (particle_t*) malloc(new_num_par * sizeof(particle_t));
+            }
+            else {
+                par = (particle_t*) realloc(par, (num_par+new_num_par) * sizeof(particle_t));
+            }
+
+            // populate id=0 particle array
+            int c = 0;
+            for(int m=num_par; m < (num_par + new_num_par); m++) {
+                par[m] = processors_particles[0][c++];
+            }
+
+            // update number of particles of id=0
+            num_par += new_num_par;
+
+            // free the used memory
+            for(int i=1; i<p; i++) free(processors_particles[i]);
+            free(processors_particles_sizes);
+
+            //printf("populate 0 done\n");
+            //fflush(stdout);
+
+            // update for the next iteration of particles
+            processed_n_part += processing_n_part;
+            processing_n_part = (n_part - processed_n_part) < max_generating_part ? (n_part - processed_n_part) : max_generating_part;
         }
-
-        free(processors_particles);
-        free(processors_particles_sizes);
-
-        printf("id:0 Sent ALL particles.\n");
-        fflush(stdout);
     }
 
-    //print_par(id, par, num_par);
-
-    //printf("id:%d num_par=%lld\n", id, num_par);
+    //printf("id:%d Going on\n", id);
     //fflush(stdout);
+    //MPI_Barrier(MPI_COMM_WORLD);
 
     /* From here on the computation is done identically at each process. */
 
+    // Determine which cells belong to me
     int *cx = (int*) malloc(2*sizeof(int));
     int *cy = (int*) malloc(2*sizeof(int));
-
     calculate_c(cx, cy, id, ncside, dims);
-
     int cols = cx[1] - cx[0] +1;
     int rows = cy[1] - cy[0] +1;
 
@@ -884,51 +839,33 @@ int main(int argc, char *argv[]) {
 
     double interval = 1.0 / ncside;
 
-
-
-    //printf("id:%d cx=[%d,%d], cy=[%d,%d]\n", id, cx[0], cx[1], cy[0], cy[1]);
-    //print_par(id, par, num_par);
-
     int* counter = (int*) calloc(p, sizeof(int));
     particle_t *containsParticleZero;
 
     for (int i = 0; i < n_tsteps; i++) {
-
-
         // determine center of mass of all cells
         calc_all_cells_cm(cells, num_par, par, cols, rows, ncside, interval);
-        //print_cells(id, cx, cy, cells, cols, rows);
-        //printf("id:%d t:%d - calc_all_cells_cm\n", id, i);
-        fflush(stdout);
 
-        MPI_Barrier(MPI_COMM_WORLD);
+        //MPI_Barrier(MPI_COMM_WORLD);
 
+        //printf("id:%d Sending cells\n", id);
+        //fflush(stdout);
         // First we have to receive all the cells that we will need from the surrounding cells
         cell_t **id_received_cells_map = (cell_t**) malloc(p * sizeof(cell_t**));
         send_and_receive_cells(id_received_cells_map, counter, cells, dims, cx, cy, ncside, cols, rows, mpi_cell_type, id, p);
-        //print_received_cells(id_received_cells_map, p, counter, id);
-        //printf("id:%d t:%d - send_and_receive_cells\n", id, i);
-        fflush(stdout);
+        //printf("id:%d Received cells\n", id);
+        //fflush(stdout);
 
-        MPI_Barrier(MPI_COMM_WORLD);
+        //MPI_Barrier(MPI_COMM_WORLD);
 
         calc_all_particle_force(ncside, cells, num_par, cx, cy, par, cols, rows, id_received_cells_map,dims, counter);
         calc_all_particle_new_values(ncside, num_par, par);
-        //print_par(id,par, num_par);
-        //printf("id:%d t:%d - calc_all_particle_new_values\n", id, i);
-        fflush(stdout);
 
         MPI_Barrier(MPI_COMM_WORLD);
 
-
-        //printf("id=%d BEFORE num_par=%lld\n", id, num_par);
         // determine if any particle has moved to another processors designated cells
         // if yes, send it
         send_and_receive_moved_particles(&par, &num_par, ncside, dims, id, p, mpi_particle_type);
-        //printf("id:%d t:%d - send_moved_particles\n", id, i);
-        fflush(stdout);
-
-        //printf("id=%d AFTER num_par=%lld\n", id, num_par);
 
         MPI_Barrier(MPI_COMM_WORLD);
 
@@ -938,14 +875,12 @@ int main(int argc, char *argv[]) {
         // init cells and particles aplied forces for next timestep
         init_particle_force(par, num_par, id, &containsParticleZero);
         init_cells_matrix(cols, rows, cells, cx[0], cy[0]);
-        //printf("id:%d t:%d - init_particle_force\n", id, i);
-        fflush(stdout);
 
         free(id_received_cells_map);
+        MPI_Barrier(MPI_COMM_WORLD);
     }
 
     // Print the desired outputs
-
     if(containsParticleZero != NULL) {
         printf("%.2f %.2f\n", containsParticleZero->x, containsParticleZero->y);
         fflush(stdout);
@@ -966,11 +901,8 @@ int main(int argc, char *argv[]) {
         double cmy = result[1];
         double cmm = result[2];
 
-        //printf("%.2f %.2f %.2f\n", cmx, cmy, cmm);
-
         for(int i=1; i<p; i++) {
             MPI_Recv(result, 3, MPI_DOUBLE, i, PROC_CM, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            //printf("id:%d - %.2f %.2f %.2f\n", i, result[0], result[1], result[2]);
 
             cmx += result[0];
             cmy += result[1];
@@ -984,12 +916,6 @@ int main(int argc, char *argv[]) {
         printf("%.2f %.2f\n", cmx/cmm, cmy/cmm);
         fflush(stdout);
     }
-
-
-    //printf("id:%d num_par=%lld\n", id, num_par);
-    //fflush(stdout);
-
-    //print_par(id, par, num_par);
 
     free(par);
     free(cells);

@@ -333,7 +333,7 @@ int main(int argc, char *argv[]) {
 
     end = clock();
 
-    printf("%f seconds\n", (double)(end-start)/(CLOCKS_PER_SEC));
+    //printf("%f seconds\n", (double)(end-start)/(CLOCKS_PER_SEC));
 
     return EXIT_SUCCESS;
 }
